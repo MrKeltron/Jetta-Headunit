@@ -58,6 +58,7 @@ say "Resources"
     --min-sdk-version "$MIN_SDK" --target-sdk-version "$TARGET_SDK" \
     --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
     --java "$OUT/gen" --auto-add-overlay \
+    $( [ -d app/src/main/assets ] && echo "-A app/src/main/assets" ) \
     -o "$OUT/base.apk" "$OUT/res.zip"
 
 say "Java"

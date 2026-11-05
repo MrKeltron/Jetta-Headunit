@@ -34,10 +34,30 @@ public class VehicleScreen extends SplitScreen {
     private static final int[] ICONS = { Icons.GAUGE, Icons.GMETER, Icons.TIMER, Icons.TRIP, Icons.SERVICE, Icons.PROFILE, Icons.LINK };
     private static final String DEFAULT_GAUGES = "boost,oil,coolant,power,latg,iat";
 
-    @Override public String title() { return "Car"; }
-    @Override public int section() { return MainActivity.CAR; }
-    @Override protected String[] items() { return ITEMS; }
-    @Override protected int icon(int i) { return ICONS[i]; }
+    public static final int[] ALL_PAGES = { 0, 1, 2, 3, 4, 5, 6 };
+    public static final int[] PERF_PAGES = { 0, 1, 2 };
+    public static final int[] CAR_PAGES = { 3, 4, 5, 6 };
+    private final int[] pages;
+    private final String title;
+    private final int section;
+
+    public VehicleScreen() { this(ALL_PAGES, "Car", MainActivity.CAR); }
+
+    /** Shows only some pages, so the head unit layout can split Performance and Car into two apps. */
+    public VehicleScreen(int[] pages, String title, int section) {
+        this.pages = pages;
+        this.title = title;
+        this.section = section;
+    }
+
+    @Override public String title() { return title; }
+    @Override public int section() { return section; }
+    @Override protected String[] items() {
+        String[] s = new String[pages.length];
+        for (int i = 0; i < pages.length; i++) s[i] = ITEMS[pages[i]];
+        return s;
+    }
+    @Override protected int icon(int i) { return ICONS[pages[i]]; }
 
     private VehicleHub hub() { return VehicleHub.get(host); }
 
@@ -48,7 +68,7 @@ public class VehicleScreen extends SplitScreen {
 
     @Override protected void page(int i, FrameLayout hostView) {
         Context c = host;
-        switch (i) {
+        switch (pages[i]) {
             case 0: performance(c, hostView); break;
             case 1: gmeter(c, hostView); break;
             case 2: lapTimer(c, hostView); break;

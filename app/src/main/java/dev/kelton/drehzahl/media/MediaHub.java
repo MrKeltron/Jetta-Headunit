@@ -77,7 +77,14 @@ public final class MediaHub implements MediaSessionManager.OnActiveSessionsChang
         notifyChanged();
     }
 
+    private String lastLogged = "";
+
     private void notifyChanged() {
+        String now = hasSession() ? appName() + " > " + title() : "";
+        if (!now.equals(lastLogged)) {
+            lastLogged = now;
+            if (!now.isEmpty()) dev.kelton.drehzahl.core.EventLog.add("media: " + now);
+        }
         for (Listener l : new ArrayList<>(listeners)) l.onMediaChanged();
     }
 
@@ -152,5 +159,38 @@ public final class MediaHub implements MediaSessionManager.OnActiveSessionsChang
     }
 
     public void next() { if (active != null) active.getTransportControls().skipToNext(); }
+
+    public void seekTo(long ms) { if (active != null) active.getTransportControls().seekTo(Math.max(0, ms)); }
+
+    /** Jump forward (positive) or back (negative) by this many milliseconds. */
+    public void jump(long ms) {
+        if (active == null) return;
+        long d = duration();
+        long to = position() + ms;
+        if (d > 0) to = Math.min(to, d - 1000);
+        seekTo(to);
+    }
+
+    /** The playing app's queue, or an empty list when the app does not share it. */
+    public List<android.media.session.MediaSession.QueueItem> queue() {
+        List<android.media.session.MediaSession.QueueItem> q = active == null ? null : active.getQueue();
+        return q == null ? new ArrayList<android.media.session.MediaSession.QueueItem>() : q;
+    }
+
+    public long activeQueueId() {
+        PlaybackState s = active == null ? null : active.getPlaybackState();
+        return s == null ? -1 : s.getActiveQueueItemId();
+    }
+
+    public void skipToQueueItem(long id) { if (active != null) active.getTransportControls().skipToQueueItem(id); }
+
+    public void openApp(Context c) {
+        String p = packageName();
+        if (p == null) return;
+        android.content.Intent i = c.getPackageManager().getLaunchIntentForPackage(p);
+        if (i == null) return;
+        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { c.startActivity(i); } catch (RuntimeException ignored) { }
+    }
     public void prev() { if (active != null) active.getTransportControls().skipToPrevious(); }
 }

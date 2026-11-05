@@ -15,7 +15,8 @@ public final class Icons extends Drawable {
             BACK = 8, PLAY = 9, PAUSE = 10, PREV = 11, NEXT = 12, GAUGE = 13, GMETER = 14, TIMER = 15,
             TRIP = 16, SERVICE = 17, PROFILE = 18, LINK = 19, DISPLAY = 20, CLOCK = 21, UNITS = 22,
             BLUETOOTH = 23, WIFI = 24, INFO = 25, DOC = 26, STAR = 27, RESET = 28, EQ = 29, TONE = 30,
-            BALANCE = 31, SPARK = 32, VOLUME = 33, CHIP = 34, GRID = 35, BATTERY = 36;
+            BALANCE = 31, SPARK = 32, VOLUME = 33, CHIP = 34, GRID = 35, BATTERY = 36,
+            NAV = 37, WIDGETS = 38, TABLET = 39, OUTPUT = 40, QUEUE = 41, REWIND = 42, FORWARD = 43;
 
     private final int kind;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -209,6 +210,49 @@ public final class Icons extends Drawable {
                 rr(c, 2.5f, 7.5f, 19.5f, 16.5f, 2);
                 path.moveTo(21.5f, 10.5f); path.lineTo(21.5f, 13.5f);
                 break;
+            case NAV:
+                path.moveTo(12, 2.5f); path.lineTo(19.5f, 21); path.lineTo(12, 16.5f); path.lineTo(4.5f, 21); path.close();
+                break;
+            case WIDGETS:
+                rr(c, 3, 3, 11, 11, 1.5f); rr(c, 13, 3, 21, 8, 1.5f); rr(c, 13, 10, 21, 21, 1.5f); rr(c, 3, 13, 11, 21, 1.5f);
+                break;
+            case TABLET:
+                rr(c, 4.5f, 2.5f, 19.5f, 21.5f, 2.5f);
+                c.drawCircle(12, 11.5f, 3, p);
+                for (int i = 0; i < 6; i++) {
+                    double a = Math.PI / 3 * i;
+                    c.drawLine(12 + (float) Math.cos(a) * 3, 11.5f + (float) Math.sin(a) * 3,
+                            12 + (float) Math.cos(a) * 4.8f, 11.5f + (float) Math.sin(a) * 4.8f, p);
+                }
+                path.moveTo(10.5f, 18.5f); path.lineTo(13.5f, 18.5f);
+                break;
+            case OUTPUT:
+                rr(c, 3, 5, 12, 19, 1.5f);
+                c.drawCircle(7.5f, 13.5f, 2.6f, p);
+                path.moveTo(14.5f, 12); path.lineTo(21, 12); path.moveTo(18.5f, 9.5f); path.lineTo(21, 12); path.lineTo(18.5f, 14.5f);
+                p.setStyle(Paint.Style.FILL); c.drawCircle(7.5f, 8.3f, 0.9f, p); p.setStyle(Paint.Style.STROKE);
+                break;
+            case QUEUE:
+                path.moveTo(4, 6); path.lineTo(16, 6); path.moveTo(4, 11); path.lineTo(16, 11); path.moveTo(4, 16); path.lineTo(11, 16);
+                p.setStyle(Paint.Style.FILL);
+                android.graphics.Path tri = new android.graphics.Path();
+                tri.moveTo(14, 14); tri.lineTo(21, 17.5f); tri.lineTo(14, 21); tri.close();
+                c.drawPath(tri, p);
+                p.setStyle(Paint.Style.STROKE);
+                break;
+            case REWIND: case FORWARD: {
+                boolean fwd = kind == FORWARD;
+                r.set(3.5f, 3.5f, 20.5f, 20.5f);
+                c.drawArc(r, fwd ? -60 : -120, fwd ? 290 : -290, false, p);
+                if (fwd) { path.moveTo(16.5f, 2); path.lineTo(19.8f, 5.6f); path.lineTo(15.3f, 6.8f); }
+                else { path.moveTo(7.5f, 2); path.lineTo(4.2f, 5.6f); path.lineTo(8.7f, 6.8f); }
+                p.setStyle(Paint.Style.FILL);
+                p.setTextAlign(Paint.Align.CENTER);
+                p.setTextSize(7.2f);
+                c.drawText(fwd ? "30" : "10", 12, 14.6f, p);
+                p.setStyle(Paint.Style.STROKE);
+                break;
+            }
             default:
                 c.drawCircle(12, 12, 8, p);
         }

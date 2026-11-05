@@ -3,9 +3,27 @@
 Head unit app for an Android tablet mounted in a car. Built for a 2015 Jetta GLI with an onn 10.1 tablet (Android 15),
 but nothing in it is tied to one car or one tablet.
 
-Drehzahl replaces the tablet's home screen with a car layout: a side rail for Home, Media, CarPlay, Car, Sound, Apps and
-Settings, an equalizer that works on other apps' audio, live gauges, a g-meter that uses the tablet's own accelerometer,
-a lap timer, trip memories and service reminders.
+Drehzahl replaces the tablet's home screen with a head unit layout: a home screen of buttons (Media, CarPlay, Navigation,
+Performance, Car, Sound, Widgets, Apps, Settings, Android settings), each opening its own app with tab buttons. It has an
+equalizer that works on other apps' audio, live gauges, a g-meter that uses the tablet's own accelerometer, a lap timer,
+trip memories, service reminders and a startup animation.
+
+## Themes
+
+Pick one in Settings > Display. Each has its own colors, font, buttons, background and startup animation.
+
+| Theme | Look | Font |
+|---|---|---|
+| GLI | Red on black, hex pattern, square buttons. Startup: hex wave, tach sweep to redline, red stripe | Saira |
+| Carbon | Carbon weave, round metal buttons, amber accents | Rajdhani |
+| Simple | Black and white, big text, fewer details | Inter |
+| Code | Terminal home with live telemetry, event log and a boost graph | JetBrains Mono |
+| Classic | The first layout: side rail and gauges on Home | Roboto (system) |
+
+Scripts can jump straight to a theme or screen:
+`adb shell am start -n dev.kelton.drehzahl/.MainActivity --ei style 0 --ei open 1 --ei page 3`
+(style 0 to 4 as in the table; open 0 Home, 1 Media, 2 CarPlay, 3 Car, 4 Sound, 5 Apps, 6 Settings, 7 Performance,
+8 Widgets; `--ez intro true` plays the startup animation).
 
 The visuals are original. Menus follow the way a factory infotainment system is organised, but no manufacturer artwork,
 fonts or logos are used.
@@ -14,8 +32,9 @@ fonts or logos are used.
 
 | Area | Details |
 |---|---|
-| Home | Clock, now playing (any app with a media session), CarPlay tile, three live gauges |
-| Media | Album art, progress, controls, quick launch for installed music apps |
+| Home | Clock, battery, now playing, three live readouts and ten app buttons |
+| Media | Now playing with seek and 10 s / 30 s skips, up next queue, sources, output (system output switcher, volume, quick EQ, balance) |
+| Widgets | Clock, now playing, engine gauges, g-meter, trip, tablet and CarPlay status on one screen |
 | CarPlay | Opens [CarLink](https://github.com/F-e-n-y-x/CarLink) (separate app, AGPL-3.0, DiPlay engine). Opens by itself when an iPhone is plugged in |
 | Sound | 10-band EQ with presets, treble/mid/bass, balance and fader pad, sound focus, bass boost, surround, loudness, 3-band compressor, limiter, reverb, max switch-on volume, speed-dependent volume |
 | Car | 6 configurable gauges (13 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
@@ -34,15 +53,15 @@ fonts or logos are used.
 app/src/main/java/dev/kelton/drehzahl/
   MainActivity.java      side rail, top bar, screen stack, day/night
   Prefs.java             every saved setting
-  ui/                    theme, icons, controls, gauge, g-meter, EQ and balance views
-  screens/               Home, Media, CarPlay, Car, Sound, Apps, Settings, terms and credits text
+  ui/                    themes, backdrops, home buttons, startup animations, icons, controls, gauges, EQ, g-meter
+  screens/               Home (grid and classic), Media, CarPlay, Car, Sound, Widgets, Apps, Settings, terms and credits
   audio/                 SoundEngine (Android audio effects), presets, session watcher
   vehicle/               data hub, demo drive, tablet sensors, metrics, trip computer, lap timer
   media/                 now playing (MediaSession)
   core/                  background service, boot and audio session receivers
   icons/                 icon pack loader
   projection/            CarLink launcher
-toolkit/                 Windows PowerShell toolkit: pair, report, debloat, install, undo
+toolkit/                 Windows PowerShell toolkit: pair, report, debloat, install, undo, screenshot tour
 tools/make_icon.py       draws the launcher icon (Python standard library only)
 build.sh                 builds the APK without Gradle
 ```
@@ -71,6 +90,11 @@ Signing: without a key the build uses a throwaway one, which is fine for testing
 To sign real builds, put `KEYSTORE`, `KEYSTORE_PASS` and `KEY_ALIAS` in `signing/keystore.properties` (ignored by git).
 For GitHub builds, add two repository secrets: `KEYSTORE_B64` (the .jks file in base64) and `KEYSTORE_PASS`. With those
 set, every push also publishes a `latest-build` release that the toolkit downloads.
+
+## Fonts
+
+Saira, Rajdhani, Inter and JetBrains Mono are under the SIL Open Font License 1.1. The license texts are in `fonts/`.
+The font files in `app/src/main/assets/fonts` are Latin subsets from the Fontsource packages, converted to TTF.
 
 ## License
 

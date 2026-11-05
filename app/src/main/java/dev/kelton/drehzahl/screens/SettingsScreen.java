@@ -70,13 +70,38 @@ public class SettingsScreen extends SplitScreen {
 
     // ---- Display ----
     private void display(Context c, LinearLayout p) {
+        p.addView(W.header(c, "Theme"));
+        for (int i = 0; i < Theme.STYLE_NAMES.length; i++) {
+            final int idx = i;
+            View mark = i == Theme.style ? W.icon(c, Icons.STAR, Theme.accent, 26) : null;
+            p.addView(W.row(c, Theme.STYLE_NAMES[i], Theme.STYLE_INFO[i], mark, new View.OnClickListener() {
+                public void onClick(View v) {
+                    if (idx == Theme.style) return;
+                    Prefs.put(Prefs.STYLE, idx);
+                    host.styleChanged();
+                }
+            }));
+        }
+        p.addView(W.toggleRow(c, "Startup animation", "Plays when Drehzahl starts and after picking a theme. Tap to skip it.",
+                Prefs.b(Prefs.INTRO, true), new Controls.BoolCb() { public void on(boolean v) { Prefs.put(Prefs.INTRO, v); } }));
+        p.addView(W.chevronRow(c, "Startup text", Prefs.s(Prefs.INTRO_TEXT, "GLI"), new View.OnClickListener() {
+            public void onClick(View v) {
+                W.askText(host, "Startup text", Prefs.s(Prefs.INTRO_TEXT, "GLI"), new W.TextCb() {
+                    public void on(String t) { Prefs.put(Prefs.INTRO_TEXT, t.trim().isEmpty() ? "GLI" : t.trim()); refreshPage(); }
+                });
+            }
+        }));
+        p.addView(W.chevronRow(c, "Play the startup animation", null, new View.OnClickListener() {
+            public void onClick(View v) { host.playIntro(); }
+        }));
+        p.addView(W.header(c, "Screen"));
         String autoSub = host.hasLightSensor() ? "Auto switches with the tablet's light sensor" : "Auto switches at 7:00 and 19:00 (no light sensor found)";
-        p.addView(W.choiceRow(c, "Theme", autoSub, new String[] { "Night", "Day", "Auto" }, Prefs.i(Prefs.THEME, 0), new Controls.IntCb() {
+        p.addView(W.choiceRow(c, "Day and night", autoSub, new String[] { "Night", "Day", "Auto" }, Prefs.i(Prefs.THEME, 0), new Controls.IntCb() {
             public void on(int v) { Prefs.put(Prefs.THEME, v); host.themeModeChanged(); }
         }));
         LinearLayout accent = W.choiceRow(c, "Accent color", Prefs.i(Prefs.PROFILE, 1) == 0 || Prefs.i(Prefs.PROFILE, 1) == 2
-                ? "The Eco and Sport driving profiles set their own color" : null, Theme.ACCENT_NAMES, Prefs.i(Prefs.ACCENT, 0), new Controls.IntCb() {
-            public void on(int v) { Prefs.put(Prefs.ACCENT, v); host.rebuild(); }
+                ? "The Eco and Sport driving profiles set their own color" : null, Theme.ACCENT_NAMES, Theme.accentIndex(), new Controls.IntCb() {
+            public void on(int v) { Prefs.put(Theme.accentKey(), v); host.rebuild(); }
         });
         p.addView(accent);
 

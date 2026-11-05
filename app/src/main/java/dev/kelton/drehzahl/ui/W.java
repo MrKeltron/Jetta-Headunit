@@ -25,11 +25,28 @@ public final class W {
     private W() { }
 
     public interface FloatCb { void on(float v); }
+    public interface TextCb { void on(String v); }
+
+    public static void askText(Context c, String title, String current, final TextCb cb) {
+        final EditText et = new EditText(c);
+        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        et.setText(current);
+        et.setSelectAllOnFocus(true);
+        FrameLayout f = new FrameLayout(c);
+        f.setPadding(Theme.dp(24), Theme.dp(8), Theme.dp(24), 0);
+        f.addView(et);
+        new AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(title).setView(f)
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int w) { cb.on(et.getText().toString()); }
+                })
+                .setNegativeButton("Cancel", null).show();
+    }
 
     public static TextView text(Context c, String s, float sp, int color) {
         TextView t = new TextView(c);
         t.setText(s);
-        t.setTextSize(sp);
+        t.setTextSize(sp * Theme.textScale);
         t.setTextColor(color);
         t.setTypeface(Theme.regular());
         t.setIncludeFontPadding(false);
@@ -105,7 +122,7 @@ public final class W {
     }
 
     public static TextView header(Context c, String s) {
-        TextView t = text(c, s.toUpperCase(), 13, Theme.DIM, Theme.medium());
+        TextView t = text(c, Theme.style == Theme.CODE ? "// " + s.toLowerCase() : s.toUpperCase(), 13, Theme.DIM, Theme.medium());
         t.setLetterSpacing(0.12f);
         t.setPadding(Theme.dp(4), Theme.dp(18), 0, Theme.dp(10));
         return t;
@@ -211,9 +228,8 @@ public final class W {
     }
 
     public static TextView button(Context c, String s, boolean primary, View.OnClickListener l) {
-        TextView b = text(c, s, 17, primary ? 0xFFFFFFFF : Theme.TEXT, Theme.medium());
-        boolean lightAccent = primary && (Theme.accent == Theme.ACCENTS[1] || Theme.accent == Theme.ACCENTS[2]);
-        if (lightAccent) b.setTextColor(0xFF0E1217);
+        TextView b = text(c, Theme.label(s), 17, primary ? Theme.onAccent() : Theme.TEXT, Theme.medium());
+        if (Theme.upper) b.setLetterSpacing(0.06f);
         b.setGravity(Gravity.CENTER);
         b.setBackground(primary ? Theme.round(Theme.accent, 12) : Theme.outline(Theme.PANEL2, Theme.LINE, 12));
         b.setPadding(Theme.dp(22), 0, Theme.dp(22), 0);

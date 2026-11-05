@@ -54,12 +54,18 @@ final class Legal {
         { "Created by", "Kelton Chelbian" },
         { "Software used",
           "Android SDK and Android Open Source Project (Apache License 2.0)\n"
-          + "Roboto font, built into Android (Apache License 2.0)\n"
+          + "Roboto font, built into Android, used by the Classic theme (Apache License 2.0)\n"
           + "Android Debug Bridge (ADB), Android platform-tools, used by the PC toolkit\n"
           + "Windows PowerShell, used by the PC toolkit" },
         { "CarPlay engine (separate app)",
           "CarLink by F-e-n-y-x, github.com/F-e-n-y-x/CarLink (AGPL-3.0)\n"
           + "Built on DiPlay by shihabal3amri (GPL-3.0), xcertplay (GPL-3.0) and DiAuto (AGPL-3.0)" },
+        { "Fonts (SIL Open Font License 1.1)",
+          "Saira by Omnibus-Type, used by the GLI theme\n"
+          + "Rajdhani by Indian Type Foundry, used by the Carbon theme\n"
+          + "Inter by Rasmus Andersson and the Inter Project Authors, used by the Simple theme\n"
+          + "JetBrains Mono by JetBrains, used by the Code theme\n"
+          + "Font files and license texts come from the Fontsource packages; the licenses are in the fonts folder of the source code" },
         { "Optional add-ons",
           "OnePro (Dark) icon pack by Eatos, sold separately on Google Play" },
         { "References",

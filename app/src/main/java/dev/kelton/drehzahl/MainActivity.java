@@ -48,17 +48,18 @@ import dev.kelton.drehzahl.ui.W;
 
 /** The whole app is this one activity: side rail, top bar, and a stack of screens in the middle. */
 public class MainActivity extends Activity implements SensorEventListener {
-    public static final int HOME = 0, MEDIA = 1, CARPLAY = 2, CAR = 3, SOUND = 4, APPS = 5, SETTINGS = 6;
+    public static final int HOME = 0, MEDIA = 1, CARPLAY = 2, CAR = 3, SOUND = 4, APPS = 5, SETTINGS = 6, PERFORMANCE = 7, WIDGETS = 8;
     private static final String[] RAIL_LABELS = { "Home", "Media", "CarPlay", "Car", "Sound", "Apps", "Settings" };
     private static final int[] RAIL_ICONS = { Icons.HOME, Icons.MEDIA, Icons.CARPLAY, Icons.CAR, Icons.SOUND, Icons.APPS, Icons.SETTINGS };
 
-    private final Screen[] roots = new Screen[RAIL_LABELS.length];
+    private final Screen[] roots = new Screen[9];
     private final ArrayList<Screen> stack = new ArrayList<>();
     private final Handler h = new Handler(Looper.getMainLooper());
     private final ArrayList<LinearLayout> railItems = new ArrayList<>();
     private Screen active;
 
     private FrameLayout content, outer;
+    private View topBar;
     private TextView titleView, clockView, dateView, batteryView;
     private ImageView backBtn;
     private View blackout;
@@ -97,23 +98,31 @@ public class MainActivity extends Activity implements SensorEventListener {
         go(HOME);
         CoreService.start(this);
         MediaHub.get(this).start();
+        dev.kelton.drehzahl.core.EventLog.add("ui: started, theme " + Theme.STYLE_NAMES[Theme.style].toLowerCase(Locale.US));
+        boolean handled = handleIntent(getIntent());
+        if (b == null && !handled && Prefs.b(Prefs.INTRO, true)) playIntro();
     }
 
     // ---------- layout ----------
 
     private void buildUi() {
         outer = new FrameLayout(this);
-        outer.setBackgroundColor(Theme.BG);
-        LinearLayout row = W.hbox(this);
-        row.setGravity(Gravity.TOP);
-        row.addView(buildRail(), new LinearLayout.LayoutParams(Theme.dp(116), W.MATCH));
-
+        outer.setBackground(new dev.kelton.drehzahl.ui.Backdrop(Theme.style));
         LinearLayout main = W.vbox(this);
-        main.addView(buildTopBar(), new LinearLayout.LayoutParams(W.MATCH, Theme.dp(72)));
+        topBar = buildTopBar();
+        main.addView(topBar, new LinearLayout.LayoutParams(W.MATCH, Theme.dp(Theme.grid() ? 66 : 72)));
         content = new FrameLayout(this);
         main.addView(content, W.vweight(1));
-        row.addView(main, W.weight(1));
-        outer.addView(row, new FrameLayout.LayoutParams(W.MATCH, W.MATCH));
+        if (Theme.grid()) {
+            railItems.clear();
+            outer.addView(main, new FrameLayout.LayoutParams(W.MATCH, W.MATCH));
+        } else {
+            LinearLayout row = W.hbox(this);
+            row.setGravity(Gravity.TOP);
+            row.addView(buildRail(), new LinearLayout.LayoutParams(Theme.dp(116), W.MATCH));
+            row.addView(main, W.weight(1));
+            outer.addView(row, new FrameLayout.LayoutParams(W.MATCH, W.MATCH));
+        }
 
         blackout = new View(this);
         blackout.setBackgroundColor(0xFF000000);
@@ -176,10 +185,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         backBtn.setPadding(Theme.dp(10), Theme.dp(10), Theme.dp(10), Theme.dp(10));
         backBtn.setLayoutParams(new LinearLayout.LayoutParams(Theme.dp(56), Theme.dp(56)));
         backBtn.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { back(); }
+            @Override public void onClick(View v) {
+                if (Theme.grid() && stack.size() == 2) go(HOME); else back();
+            }
         });
         bar.addView(backBtn);
         titleView = W.text(this, "", 24, Theme.TEXT, Theme.medium());
+        if (Theme.upper) titleView.setLetterSpacing(0.08f);
         titleView.setPadding(Theme.dp(8), 0, 0, 0);
         bar.addView(titleView, new LinearLayout.LayoutParams(0, W.WRAP, 1f));
         batteryView = W.text(this, "", 16, Theme.DIM);
@@ -212,11 +224,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             switch (section) {
                 case MEDIA: roots[section] = new MediaScreen(); break;
                 case CARPLAY: roots[section] = new CarPlayScreen(); break;
-                case CAR: roots[section] = new VehicleScreen(); break;
+                case CAR: roots[section] = Theme.grid()
+                        ? new VehicleScreen(VehicleScreen.CAR_PAGES, "Car", CAR) : new VehicleScreen(); break;
+                case PERFORMANCE: roots[section] = new VehicleScreen(VehicleScreen.PERF_PAGES, "Performance", PERFORMANCE); break;
+                case WIDGETS: roots[section] = new dev.kelton.drehzahl.screens.WidgetsScreen(); break;
                 case SOUND: roots[section] = new SoundScreen(); break;
                 case APPS: roots[section] = new AppsScreen(); break;
                 case SETTINGS: roots[section] = new SettingsScreen(); break;
-                default: roots[section] = new HomeScreen();
+                default: roots[section] = Theme.grid() ? new dev.kelton.drehzahl.screens.HomeGridScreen() : new HomeScreen();
             }
         }
         return roots[section];
@@ -225,16 +240,22 @@ public class MainActivity extends Activity implements SensorEventListener {
     public Screen rootScreen(int section) { return root(section); }
 
     public void go(int section) {
+        if (!Theme.grid() && section > SETTINGS) section = section == PERFORMANCE ? CAR : HOME;
         deactivate();
         stack.clear();
-        stack.add(root(section));
+        if (Theme.grid()) {
+            stack.add(root(HOME));
+            if (section != HOME) stack.add(root(section));
+        } else {
+            stack.add(root(section));
+        }
         show();
     }
 
     /** Open a section and pick a page inside it (for example Settings > Units). */
     public void go(int section, int page) {
         go(section);
-        Screen s = stack.get(0);
+        Screen s = stack.get(stack.size() - 1);
         if (s instanceof dev.kelton.drehzahl.ui.SplitScreen) ((dev.kelton.drehzahl.ui.SplitScreen) s).select(page);
     }
 
@@ -252,7 +273,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             deactivate();
             stack.remove(stack.size() - 1);
             show();
-        } else if (top != roots[HOME]) {
+        } else if (!Theme.grid() && top != roots[HOME]) {
             go(HOME);
         }
     }
@@ -267,9 +288,15 @@ public class MainActivity extends Activity implements SensorEventListener {
             v.setAlpha(0f);
             v.animate().alpha(1f).setDuration(160).start();
         }
-        titleView.setText(top.title());
-        backBtn.setVisibility(stack.size() > 1 || top != roots[HOME] ? View.VISIBLE : View.INVISIBLE);
-        highlightRail(top.section());
+        titleView.setText(Theme.grid() ? Theme.label(top.title()) : top.title());
+        if (Theme.grid()) {
+            topBar.setVisibility(stack.size() == 1 ? View.GONE : View.VISIBLE);
+            backBtn.setImageDrawable(new Icons(stack.size() == 2 ? Icons.HOME : Icons.BACK, Theme.TEXT));
+            backBtn.setVisibility(View.VISIBLE);
+        } else {
+            backBtn.setVisibility(stack.size() > 1 || top != roots[HOME] ? View.VISIBLE : View.INVISIBLE);
+            highlightRail(top.section());
+        }
         activate(top);
     }
 
@@ -303,10 +330,80 @@ public class MainActivity extends Activity implements SensorEventListener {
         updateClock();
     }
 
+    /** A new theme was picked: rebuild everything, land on Settings > Display and play the theme's intro. */
+    public void styleChanged() {
+        deactivate();
+        for (Screen s : roots) if (s != null) s.invalidateView();
+        java.util.Arrays.fill(roots, null);
+        stack.clear();
+        Theme.init(this, startNight());
+        buildUi();
+        applyWindow();
+        go(SETTINGS, dev.kelton.drehzahl.screens.SettingsScreen.DISPLAY);
+        updateClock();
+        dev.kelton.drehzahl.core.EventLog.add("ui: theme " + Theme.STYLE_NAMES[Theme.style].toLowerCase(Locale.US));
+        if (Prefs.b(Prefs.INTRO, true)) playIntro();
+    }
+
+    public void playIntro() {
+        final dev.kelton.drehzahl.ui.IntroView[] ref = new dev.kelton.drehzahl.ui.IntroView[1];
+        ref[0] = new dev.kelton.drehzahl.ui.IntroView(this, Theme.style, Prefs.s(Prefs.INTRO_TEXT, "GLI"), bootLines(), new Runnable() {
+            @Override public void run() { if (ref[0].getParent() != null) ((ViewGroup) ref[0].getParent()).removeView(ref[0]); }
+        });
+        outer.addView(ref[0], new FrameLayout.LayoutParams(W.MATCH, W.MATCH));
+    }
+
+    private String[] bootLines() {
+        dev.kelton.drehzahl.audio.SoundEngine eng = dev.kelton.drehzahl.audio.SoundEngine.get(this);
+        dev.kelton.drehzahl.vehicle.VehicleHub hub = dev.kelton.drehzahl.vehicle.VehicleHub.get(this);
+        String cl = dev.kelton.drehzahl.projection.CarLink.version(this);
+        return new String[] {
+            "drehzahl " + versionName() + " on " + Build.MANUFACTURER + " " + Build.MODEL + " (android " + Build.VERSION.RELEASE + ")",
+            "[ OK ] theme code, font jetbrains mono",
+            "[ OK ] audio engine: " + eng.supported.size() + " effect types",
+            "[ OK ] vehicle source: " + dev.kelton.drehzahl.vehicle.VehicleHub.SOURCES[hub.source()].toLowerCase(Locale.US),
+            "[ OK ] sensors: accel " + (hub.motion.hasAccel() ? "yes" : "no") + ", gps " + (hub.motion.hasGps() ? "yes" : "no")
+                    + ", light " + (light != null ? "yes" : "no"),
+            (cl == null ? "[WARN] carplay bridge: carlink missing" : "[ OK ] carplay bridge: carlink " + cl),
+            "starting ui..."
+        };
+    }
+
+    private String versionName() {
+        try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
+        catch (Exception e) { return "?"; }
+    }
+
+    /**
+     * Extras for scripts and adb: style (theme number), open (section) with page, intro (true to play it).
+     * Example: adb shell am start -n dev.kelton.drehzahl/.MainActivity --ei style 0 --ei open 1 --ei page 0
+     */
+    private boolean handleIntent(Intent i) {
+        if (i == null || i.getExtras() == null) return false;
+        boolean any = false;
+        if (i.hasExtra("style")) {
+            Prefs.put(Prefs.STYLE, i.getIntExtra("style", 0));
+            deactivate();
+            for (Screen s : roots) if (s != null) s.invalidateView();
+            java.util.Arrays.fill(roots, null);
+            stack.clear();
+            Theme.init(this, startNight());
+            buildUi();
+            applyWindow();
+            go(HOME);
+            any = true;
+        }
+        if (i.hasExtra("open")) { go(i.getIntExtra("open", 0), i.getIntExtra("page", 0)); any = true; }
+        if (i.getBooleanExtra("intro", false)) { playIntro(); any = true; }
+        i.removeExtra("style"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro");
+        return any;
+    }
+
     @Override public void onBackPressed() { back(); }
 
     @Override protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
+        if (handleIntent(i)) return;
         if (i.hasCategory(Intent.CATEGORY_HOME)) {
             blackout.setVisibility(View.GONE);
             go(HOME);

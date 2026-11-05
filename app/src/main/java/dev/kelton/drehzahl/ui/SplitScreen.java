@@ -29,6 +29,50 @@ public abstract class SplitScreen extends Screen {
     protected final void onPageLeave(Runnable r) { pageCleanups.add(r); }
 
     @Override protected View build() {
+        return Theme.grid() ? buildTabs() : buildSide();
+    }
+
+    /** Head unit themes: a row of tab buttons across the top instead of a side menu. */
+    private View buildTabs() {
+        Context c = host;
+        LinearLayout root = W.vbox(c);
+        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(c);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout tabs = W.hbox(c);
+        tabs.setPadding(Theme.dp(20), Theme.dp(4), Theme.dp(20), Theme.dp(10));
+        menuRows.clear();
+        String[] it = items();
+        for (int i = 0; i < it.length; i++) {
+            final int idx = i;
+            LinearLayout tab = W.hbox(c);
+            tab.setPadding(Theme.dp(18), 0, Theme.dp(22), 0);
+            tab.setMinimumHeight(Theme.dp(58));
+            tab.addView(W.icon(c, icon(i), Theme.DIM, 24));
+            TextView t = W.text(c, Theme.label(it[i]), 17, Theme.TEXT, Theme.medium());
+            if (Theme.upper) t.setLetterSpacing(0.06f);
+            t.setPadding(Theme.dp(10), 0, 0, 0);
+            t.setMaxLines(1);
+            tab.addView(t);
+            tab.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { select(idx); }
+            });
+            LinearLayout.LayoutParams lp = W.lp(W.WRAP, W.WRAP);
+            lp.rightMargin = Theme.dp(8);
+            tabs.addView(tab, lp);
+            menuRows.add(tab);
+        }
+        hs.addView(tabs);
+        root.addView(hs, W.lp(W.MATCH, W.WRAP));
+        View line = new View(c);
+        line.setBackgroundColor(Theme.LINE);
+        root.addView(line, W.lp(W.MATCH, Theme.dp(1)));
+        pageHost = new FrameLayout(c);
+        root.addView(pageHost, W.vweight(1));
+        select(selected);
+        return root;
+    }
+
+    private View buildSide() {
         Context c = host;
         LinearLayout root = W.hbox(c);
         root.setGravity(Gravity.TOP);
@@ -79,7 +123,9 @@ public abstract class SplitScreen extends Screen {
         for (int k = 0; k < menuRows.size(); k++) {
             LinearLayout row = menuRows.get(k);
             boolean on = k == i;
-            row.setBackground(on ? Theme.round(Theme.PANEL2, 12) : null);
+            if (Theme.grid()) row.setBackground(on ? Theme.outline(Theme.alpha(Theme.accent, 0.16f), Theme.alpha(Theme.accent, 0.7f), 12)
+                    : Theme.outline(Theme.alpha(Theme.PANEL, 0.9f), Theme.LINE, 12));
+            else row.setBackground(on ? Theme.round(Theme.PANEL2, 12) : null);
             ((Icons) ((ImageView) row.getChildAt(0)).getDrawable()).setColor(on ? Theme.accent : Theme.DIM);
             ((TextView) row.getChildAt(1)).setTextColor(on ? Theme.TEXT : Theme.DIM);
         }

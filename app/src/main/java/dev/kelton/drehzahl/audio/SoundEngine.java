@@ -123,12 +123,13 @@ public final class SoundEngine {
         create(c);
         chains.put(session, c);
         apply(c);
+        dev.kelton.drehzahl.core.EventLog.add("audio: effects on " + c.owner + " (session " + session + ")");
         changed();
     }
 
     public synchronized void close(int session) {
         Chain c = chains.remove(session);
-        if (c != null) { c.release(); changed(); }
+        if (c != null) { c.release(); dev.kelton.drehzahl.core.EventLog.add("audio: released session " + session); changed(); }
     }
 
     public synchronized void closeAll() {

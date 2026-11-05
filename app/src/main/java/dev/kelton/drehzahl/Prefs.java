@@ -9,6 +9,9 @@ public final class Prefs {
 
     // Display
     public static final String THEME = "theme";            // 0 night, 1 day, 2 auto (light sensor)
+    public static final String STYLE = "style";            // ui.Theme.GLI, CARBON, SIMPLE, CODE, CLASSIC
+    public static final String INTRO = "intro";
+    public static final String INTRO_TEXT = "intro_text";
     public static final String ACCENT = "accent";
     public static final String HIDE_BARS = "hide_bars";
     public static final String KEEP_ON = "keep_on";
