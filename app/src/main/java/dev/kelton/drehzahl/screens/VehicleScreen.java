@@ -30,13 +30,13 @@ import dev.kelton.drehzahl.vehicle.VehicleHub;
 
 /** Car: performance gauges, g-meter, lap timer, trip data, service, driving profile, data source. */
 public class VehicleScreen extends SplitScreen {
-    private static final String[] ITEMS = { "Performance", "G-meter", "Lap timer", "Driving data", "Service", "Driving profile", "Data source" };
-    private static final int[] ICONS = { Icons.GAUGE, Icons.GMETER, Icons.TIMER, Icons.TRIP, Icons.SERVICE, Icons.PROFILE, Icons.LINK };
+    private static final String[] ITEMS = { "Performance", "G-meter", "Lap timer", "Driving data", "Service", "Driving profile", "Data source", "Trouble codes" };
+    private static final int[] ICONS = { Icons.GAUGE, Icons.GMETER, Icons.TIMER, Icons.TRIP, Icons.SERVICE, Icons.PROFILE, Icons.LINK, Icons.DOC };
     private static final String DEFAULT_GAUGES = "boost,oil,coolant,power,latg,iat";
 
-    public static final int[] ALL_PAGES = { 0, 1, 2, 3, 4, 5, 6 };
+    public static final int[] ALL_PAGES = { 0, 1, 2, 3, 7, 4, 5, 6 };
     public static final int[] PERF_PAGES = { 0, 1, 2 };
-    public static final int[] CAR_PAGES = { 3, 4, 5, 6 };
+    public static final int[] CAR_PAGES = { 3, 7, 4, 5, 6 };
     private final int[] pages;
     private final String title;
     private final int section;
@@ -75,6 +75,7 @@ public class VehicleScreen extends SplitScreen {
             case 3: trips(c, W.page(c, hostView)); break;
             case 4: service(c, W.page(c, hostView)); break;
             case 5: profile(c, W.page(c, hostView)); break;
+            case 7: codes(c, W.page(c, hostView)); break;
             default: source(c, W.page(c, hostView));
         }
     }
@@ -362,7 +363,7 @@ public class VehicleScreen extends SplitScreen {
         String[] info = {
                 "Simulated drive with warm-up, gear changes and boost. Good for testing screens at home.",
                 "Accelerometer for g-forces, GPS for speed if this tablet has GPS. No engine data.",
-                "ELM327 style adapter in the OBD2 port. Not built yet.",
+                "ELM327 adapter in the OBD2 port, by USB cable or classic Bluetooth. Engine data, trouble codes.",
                 "Live data from a flash tuner. Not built yet."
         };
         for (int i = 0; i < 4; i++) {
@@ -372,8 +373,9 @@ public class VehicleScreen extends SplitScreen {
                 public void onClick(View v) { Prefs.put(Prefs.SOURCE, idx); CoreService.refresh(host); refreshPage(); }
             });
             p.addView(row);
-            if (i >= 2) W.setEnabledDeep(row, false);
+            if (i >= 3) W.setEnabledDeep(row, false);
         }
+        if (cur == 2) obdSection(c, p);
         p.addView(W.toggleRow(c, "Real g-forces during demo", "Mix the tablet's accelerometer into the demo drive",
                 Prefs.b("demo_real_g", true), new Controls.BoolCb() { public void on(boolean v) { Prefs.put("demo_real_g", v); } }));
         p.addView(W.chevronRow(c, "Units", "mph or km/h, °F or °C, psi or bar", new View.OnClickListener() {
@@ -381,5 +383,142 @@ public class VehicleScreen extends SplitScreen {
         }));
         p.addView(W.valueRow(c, "Tablet accelerometer", hub().motion.hasAccel() ? "Yes" : "No"));
         p.addView(W.valueRow(c, "Tablet GPS", hub().motion.hasGps() ? "Yes" : "No"));
+    }
+
+    // ---- OBD2 adapter (shown under Data source when OBD2 is picked) ----
+    private void obdSection(final Context c, LinearLayout p) {
+        final dev.kelton.drehzahl.obd.ObdSource obd = dev.kelton.drehzahl.obd.ObdSource.get(host);
+        p.addView(W.header(c, "OBD2 adapter"));
+        p.addView(W.choiceRow(c, "Connection", null, new String[] { "USB cable", "Bluetooth" }, Prefs.i(Prefs.OBD_LINK, 0), new Controls.IntCb() {
+            public void on(int v) { Prefs.put(Prefs.OBD_LINK, v); obd.restart(); refreshPage(); }
+        }));
+        if (Prefs.i(Prefs.OBD_LINK, 0) == 1) {
+            String name = Prefs.s(Prefs.OBD_BT_NAME, "");
+            p.addView(W.chevronRow(c, "Bluetooth adapter", name.isEmpty() ? "Pick a paired adapter (pair it in Android Bluetooth settings first)" : name,
+                    new View.OnClickListener() { public void onClick(View v) { pickBluetooth(); } }));
+        }
+        LinearLayout card = W.card(c);
+        final TextView st = W.text(c, "", 30, Theme.TEXT, Theme.light());
+        final TextView det = W.text(c, "", 15, Theme.DIM);
+        det.setLineSpacing(0, 1.35f);
+        det.setPadding(0, Theme.dp(8), 0, Theme.dp(14));
+        card.addView(st);
+        card.addView(det);
+        LinearLayout btns = W.hbox(c);
+        btns.addView(W.button(c, "Reconnect", true, new View.OnClickListener() { public void onClick(View v) { obd.restart(); } }));
+        btns.addView(W.gap(c, 12));
+        btns.addView(W.button(c, "Adapter console", false, new View.OnClickListener() { public void onClick(View v) { host.push(new ObdConsoleScreen()); } }));
+        card.addView(btns);
+        p.addView(card, W.margins(W.lp(W.MATCH, W.WRAP), 0, 0, 0, 8));
+        final Runnable upd = new Runnable() {
+            public void run() {
+                int s = obd.state;
+                st.setText(dev.kelton.drehzahl.obd.ObdSource.STATE_NAMES[s]);
+                st.setTextColor(s == dev.kelton.drehzahl.obd.ObdSource.LIVE ? Theme.GOOD : s == dev.kelton.drehzahl.obd.ObdSource.ERROR ? Theme.BAD : Theme.TEXT);
+                StringBuilder sb = new StringBuilder();
+                if (!obd.detail.isEmpty()) sb.append(obd.detail).append('\n');
+                if (!obd.adapter.isEmpty()) sb.append("Adapter: ").append(obd.adapter).append('\n');
+                if (!obd.linkName.isEmpty()) sb.append("Link: ").append(obd.linkName).append('\n');
+                if (!Float.isNaN(obd.voltage)) sb.append(String.format(Locale.US, "Battery: %.1f V%n", obd.voltage));
+                if (s == dev.kelton.drehzahl.obd.ObdSource.LIVE) {
+                    sb.append("Protocol: ").append(obd.protocol).append('\n');
+                    sb.append("VIN: ").append(obd.vin.isEmpty() ? "not reported" : obd.vin).append('\n');
+                    sb.append(String.format(Locale.US, "Readings the car answers: %d, updating %.0f per second%n", obd.pidCount, obd.rate));
+                    if (!obd.supports(0x5C)) sb.append("Oil temp: this car does not report it over generic OBD2\n");
+                    if (!(obd.supports(0x62) && obd.supports(0x63))) sb.append("Power and torque: estimated from airflow\n");
+                }
+                if (s == dev.kelton.drehzahl.obd.ObdSource.ERROR && !obd.lastError.isEmpty()) sb.append("Last error: ").append(obd.lastError).append('\n');
+                det.setText(sb.toString().trim());
+            }
+        };
+        upd.run();
+        final dev.kelton.drehzahl.obd.ObdSource.Listener l = new dev.kelton.drehzahl.obd.ObdSource.Listener() { public void onObdStatus() { upd.run(); } };
+        obd.addListener(l);
+        onPageLeave(new Runnable() { public void run() { obd.removeListener(l); } });
+        p.addView(W.toggleRow(c, "Log all adapter traffic", "Writes every command and reply to obd-log.txt. Slows polling a little.",
+                Prefs.b(Prefs.OBD_TRAFFIC, false), new Controls.BoolCb() { public void on(boolean v) { Prefs.put(Prefs.OBD_TRAFFIC, v); obd.restart(); } }));
+        p.addView(W.note(c, "USB: plug the adapter into the car, then into the tablet with a USB-C OTG adapter. Android asks once whether "
+                + "Drehzahl may use it; tick Always open. Turn the ignition on so the car answers.\n"
+                + "Bluetooth: needs a classic Bluetooth (SPP) adapter paired in Android settings first. BLE-only adapters are not supported yet."));
+    }
+
+    private void pickBluetooth() {
+        android.bluetooth.BluetoothManager bm = (android.bluetooth.BluetoothManager) host.getSystemService(Context.BLUETOOTH_SERVICE);
+        android.bluetooth.BluetoothAdapter ba = bm == null ? null : bm.getAdapter();
+        if (ba == null || !ba.isEnabled()) { W.toast(host, "Turn Bluetooth on first"); return; }
+        final java.util.List<String> names = new java.util.ArrayList<>(), addrs = new java.util.ArrayList<>();
+        try {
+            for (android.bluetooth.BluetoothDevice d : ba.getBondedDevices()) {
+                names.add((d.getName() == null ? "Unnamed" : d.getName()) + "  (" + d.getAddress() + ")");
+                addrs.add(d.getAddress());
+            }
+        } catch (SecurityException e) { W.toast(host, "Bluetooth permission missing. Run Install in the PC toolkit."); return; }
+        if (names.isEmpty()) { W.toast(host, "No paired devices. Pair the adapter in Android Bluetooth settings."); return; }
+        W.pick(host, "Bluetooth adapter", names.toArray(new String[0]), new Controls.IntCb() {
+            public void on(int i) {
+                Prefs.put(Prefs.OBD_BT_ADDR, addrs.get(i));
+                Prefs.put(Prefs.OBD_BT_NAME, names.get(i));
+                dev.kelton.drehzahl.obd.ObdSource.get(host).restart();
+                refreshPage();
+            }
+        });
+    }
+
+    // ---- Trouble codes ----
+    private void codes(final Context c, final LinearLayout p) {
+        p.addView(W.note(c, "Reads stored, pending and permanent codes from every module that answers generic OBD2. "
+                + "On your car that is the engine and the DSG. Needs Data source set to OBD2 adapter and the ignition on."));
+        LinearLayout btns = W.hbox(c);
+        final LinearLayout res = W.vbox(c);
+        btns.addView(W.button(c, "Read codes", true, new View.OnClickListener() {
+            public void onClick(View v) {
+                res.removeAllViews();
+                res.addView(W.note(c, "Reading..."));
+                dev.kelton.drehzahl.obd.ObdSource.get(host).submit(new String[] { "03", "07", "0A" }, true, new dev.kelton.drehzahl.obd.ObdSource.Callback() {
+                    public void done(String r) { showCodes(c, res, r); }
+                });
+            }
+        }));
+        btns.addView(W.gap(c, 12));
+        btns.addView(W.button(c, "Clear codes", false, new View.OnClickListener() {
+            public void onClick(View v) {
+                W.confirm(host, "Clear trouble codes", "This turns off the check engine light and resets the emissions readiness monitors. "
+                        + "If the fault is still there the code comes back. Clear with the engine off and the ignition on.", new Runnable() {
+                    public void run() {
+                        dev.kelton.drehzahl.obd.ObdSource.get(host).submit(new String[] { "04" }, false, new dev.kelton.drehzahl.obd.ObdSource.Callback() {
+                            public void done(String r) {
+                                res.removeAllViews();
+                                res.addView(W.note(c, r.contains("44") ? "Codes cleared." : "The car did not confirm the clear:\n" + r.trim()));
+                            }
+                        });
+                    }
+                });
+            }
+        }));
+        p.addView(btns);
+        p.addView(res, W.margins(W.lp(W.MATCH, W.WRAP), 0, 14, 0, 0));
+    }
+
+    private void showCodes(Context c, LinearLayout res, String out) {
+        res.removeAllViews();
+        if (out.startsWith("Not connected")) { res.addView(W.note(c, out)); return; }
+        String[] kinds = { "Stored", "Pending", "Permanent" };
+        int[] modes = { 0x03, 0x07, 0x0A };
+        String[] parts = out.split("(?m)^> ");
+        int total = 0;
+        for (String part : parts) {
+            if (part.trim().isEmpty()) continue;
+            String cmd = part.substring(0, part.indexOf('\n') < 0 ? part.length() : part.indexOf('\n')).trim();
+            String body = part.indexOf('\n') < 0 ? "" : part.substring(part.indexOf('\n') + 1);
+            int k = cmd.equals("03") ? 0 : cmd.equals("07") ? 1 : cmd.equals("0A") ? 2 : -1;
+            if (k < 0) continue;
+            for (String e : dev.kelton.drehzahl.obd.ObdParse.dtcs(body, modes[k])) {
+                String[] f = e.split("\\|");
+                res.addView(W.row(c, f[0], f[1] + ", " + kinds[k].toLowerCase(Locale.US), null, null));
+                total++;
+            }
+        }
+        res.addView(W.note(c, total == 0 ? "No trouble codes." : total + " code" + (total == 1 ? "" : "s")
+                + ". Look them up for your engine (EA888) or DSG (DQ250), or check them with VCDS for manufacturer detail."));
     }
 }

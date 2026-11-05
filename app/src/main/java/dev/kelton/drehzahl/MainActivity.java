@@ -375,10 +375,16 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     /**
-     * Extras for scripts and adb: style (theme number), open (section) with page, intro (true to play it).
+     * Extras for scripts and adb: style (theme number), source (0 demo, 1 sensors, 2 OBD2), open (section) with page, intro (true to play it).
      * Example: adb shell am start -n dev.kelton.drehzahl/.MainActivity --ei style 0 --ei open 1 --ei page 0
      */
     private boolean handleIntent(Intent i) {
+        if (i != null && android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(i.getAction())) {
+            dev.kelton.drehzahl.obd.ObdSource.get(this).poke();
+            if (Prefs.i(Prefs.SOURCE, 0) != 2) W.toast(this, "OBD2 adapter plugged in. Pick it in Car > Data source.");
+            i.setAction(Intent.ACTION_MAIN);
+            return true;
+        }
         if (i == null || i.getExtras() == null) return false;
         boolean any = false;
         if (i.hasExtra("style")) {
@@ -393,9 +399,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             go(HOME);
             any = true;
         }
+        if (i.hasExtra("source")) {
+            Prefs.put(Prefs.SOURCE, i.getIntExtra("source", 0));
+            CoreService.refresh(this);
+            any = true;
+        }
         if (i.hasExtra("open")) { go(i.getIntExtra("open", 0), i.getIntExtra("page", 0)); any = true; }
         if (i.getBooleanExtra("intro", false)) { playIntro(); any = true; }
-        i.removeExtra("style"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro");
+        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro");
         return any;
     }
 

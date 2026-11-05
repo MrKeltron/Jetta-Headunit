@@ -22,7 +22,7 @@ Pick one in Settings > Display. Each has its own colors, font, buttons, backgrou
 
 Scripts can jump straight to a theme or screen:
 `adb shell am start -n dev.kelton.drehzahl/.MainActivity --ei style 0 --ei open 1 --ei page 3`
-(style 0 to 4 as in the table; open 0 Home, 1 Media, 2 CarPlay, 3 Car, 4 Sound, 5 Apps, 6 Settings, 7 Performance,
+(style 0 to 4 as in the table; source 0 demo, 1 tablet sensors, 2 OBD2; open 0 Home, 1 Media, 2 CarPlay, 3 Car, 4 Sound, 5 Apps, 6 Settings, 7 Performance,
 8 Widgets; `--ez intro true` plays the startup animation).
 
 The visuals are original. Menus follow the way a factory infotainment system is organised, but no manufacturer artwork,
@@ -37,13 +37,15 @@ fonts or logos are used.
 | Widgets | Clock, now playing, engine gauges, g-meter, trip, tablet and CarPlay status on one screen |
 | CarPlay | Opens [CarLink](https://github.com/F-e-n-y-x/CarLink) (separate app, AGPL-3.0, DiPlay engine). Opens by itself when an iPhone is plugged in |
 | Sound | 10-band EQ with presets, treble/mid/bass, balance and fader pad, sound focus, bass boost, surround, loudness, 3-band compressor, limiter, reverb, max switch-on volume, speed-dependent volume |
-| Car | 6 configurable gauges (13 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
+| Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
+| OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers) or classic Bluetooth. Finds which readings the car answers, polls them continuously, reads and clears trouble codes per module, adapter console, log file |
 | Settings | Day/night/auto (light sensor), accent color, brightness, hide system bars, keep screen on, time and date, units, icon pack, connections, tablet info, terms, credits, reset |
 | Apps | App drawer with icon pack support (any pack using the standard appfilter.xml, such as OnePro Dark) |
 
 ## Not built yet
 
-- Bluetooth OBD2 (ELM327) data source. The Car screens run on a simulated drive or tablet sensors until then.
+- Bluetooth LE adapters (classic Bluetooth and USB work).
+- Manufacturer-specific readings (oil temperature on cars that do not report it over generic OBD2, actual vs requested boost).
 - Tuner link data source.
 - Fader and front focus output. They need a 4-channel USB audio interface; the settings are saved already.
 
@@ -57,6 +59,7 @@ app/src/main/java/dev/kelton/drehzahl/
   screens/               Home (grid and classic), Media, CarPlay, Car, Sound, Widgets, Apps, Settings, terms and credits
   audio/                 SoundEngine (Android audio effects), presets, session watcher
   vehicle/               data hub, demo drive, tablet sensors, metrics, trip computer, lap timer
+  obd/                   USB serial drivers, Bluetooth link, ELM327 protocol, OBD2 polling, reply parser
   media/                 now playing (MediaSession)
   core/                  background service, boot and audio session receivers
   icons/                 icon pack loader

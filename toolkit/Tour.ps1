@@ -55,6 +55,15 @@ for ($i = 0; $i -lt $names.Count; $i++) {
     Open '--ei open 6 --ei page 0'
     Shot ($n + '-8-settings')
 }
+Step 'OBD2 screens (GLI theme)'
+Open '--ei style 0 --ei source 2' 3
+Open '--ei open 3 --ei page 4' 3
+Shot 'obd-1-data-source'
+Open '--ei open 3 --ei page 1' 2
+Shot 'obd-2-trouble-codes'
+Open '--ei open 7 --ei page 0' 2
+Shot 'obd-3-performance-no-adapter'
+Open '--ei source 0' 1
 Open '--ei style 0' 2
 $crash = (Invoke-Adb @('logcat', '-d', '-b', 'crash')).Text
 Set-Content -Path (Join-Path $out 'crash-log.txt') -Value $crash -Encoding UTF8

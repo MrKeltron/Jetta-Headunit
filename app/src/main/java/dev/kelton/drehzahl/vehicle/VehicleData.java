@@ -16,9 +16,19 @@ public final class VehicleData {
     public float latG;          // + = car accelerating to the right (turning right)
     public float lonG;          // + = accelerating
     public float fuelLph;
+    public float ambientC = Float.NaN;
+    public float mafGs;
+    public boolean powerEstimated;
     public int gear;
     public boolean live;        // false while showing demo data
     public boolean hasSpeed;
     public boolean hasEngine;
     public boolean hasG;
+
+    public void copyFrom(VehicleData o) {
+        speedKmh = o.speedKmh; rpm = o.rpm; boostKpa = o.boostKpa; oilC = o.oilC; coolantC = o.coolantC; iatC = o.iatC;
+        throttle = o.throttle; load = o.load; batteryV = o.batteryV; torqueNm = o.torqueNm; powerKw = o.powerKw;
+        fuelLph = o.fuelLph; ambientC = o.ambientC; mafGs = o.mafGs; powerEstimated = o.powerEstimated; gear = o.gear;
+        hasSpeed = o.hasSpeed; hasEngine = o.hasEngine;
+    }
 }

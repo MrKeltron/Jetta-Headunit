@@ -12,12 +12,12 @@ import dev.kelton.drehzahl.Prefs;
 
 /**
  * Collects vehicle data from the selected source 20 times a second and hands it to whichever screens are open.
- * Sources: 0 demo, 1 tablet sensors, 2 Bluetooth OBD2 (planned), 3 tuner link (planned).
+ * Sources: 0 demo, 1 tablet sensors, 2 OBD2 adapter (USB or Bluetooth ELM327), 3 tuner link (planned).
  */
 public final class VehicleHub {
     public interface Listener { void onData(VehicleData d); }
 
-    public static final String[] SOURCES = { "Demo drive", "Tablet sensors", "Bluetooth OBD2", "Tuner link" };
+    public static final String[] SOURCES = { "Demo drive", "Tablet sensors", "OBD2 adapter", "Tuner link" };
 
     private static VehicleHub inst;
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -47,7 +47,9 @@ public final class VehicleHub {
         return inst;
     }
 
-    private VehicleHub(Context c) { motion = new MotionSource(c); }
+    private final Context ctx;
+
+    private VehicleHub(Context c) { ctx = c; motion = new MotionSource(c); }
 
     public int source() { return Prefs.i(Prefs.SOURCE, 0); }
 
@@ -56,6 +58,11 @@ public final class VehicleHub {
         if (src == 0) {
             demo.step(dt, data);
             data.live = false;
+        } else if (src == 2) {
+            dev.kelton.drehzahl.obd.ObdSource.get(ctx).copyTo(data);
+            data.live = true;
+            float gps = motion.gpsSpeed();
+            if (!data.hasSpeed && gps >= 0) { data.speedKmh = gps; data.hasSpeed = true; }
         } else {
             data.live = true;
             data.hasEngine = false;

@@ -60,4 +60,7 @@ function Save-CrashLog {
     $crash = (Invoke-Adb @('logcat', '-d', '-b', 'crash')).Text
     Set-Content -Path $file -Value @('### crash buffer', $crash, '', '### last 3000 lines', $text) -Encoding UTF8
     Say ('Saved: ' + $file) Green
+    $obd = Join-Path $Script:Reports ('obd-log-' + (Get-Stamp) + '.txt')
+    $pull = Invoke-Adb @('pull', '/sdcard/Android/data/dev.kelton.drehzahl/files/obd-log.txt', $obd)
+    if (Test-Path $obd) { Say ('Saved: ' + $obd) Green } else { Say 'No OBD2 log on the tablet yet.' DarkGray }
 }

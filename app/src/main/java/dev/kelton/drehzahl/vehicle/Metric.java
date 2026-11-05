@@ -86,6 +86,18 @@ public abstract class Metric {
             public float max() { return 16f; }
             public int decimals() { return 1; }
         },
+        new Metric("ambient", "Outside temp") {
+            public float value(VehicleData d) { return Units.temp(d.ambientC); }
+            public String unit() { return Units.tempUnit(); }
+            public float min() { return Units.temp(-20f); }
+            public float max() { return Units.temp(45f); }
+        },
+        new Metric("maf", "Airflow") {
+            public float value(VehicleData d) { return d.mafGs; }
+            public String unit() { return "g/s"; }
+            public float min() { return 0f; }
+            public float max() { return 250f; }
+        },
         new Metric("latg", "Lateral g") {
             public float value(VehicleData d) { return Math.abs(d.latG); }
             public String unit() { return "g"; }

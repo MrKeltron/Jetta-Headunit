@@ -40,6 +40,7 @@ public class CoreService extends Service {
             if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)) {
                 UsbDevice d = i.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (d != null && d.getVendorId() == CarLink.APPLE_VENDOR_ID && Prefs.b(Prefs.AUTO_CP, true)) CarLink.launch(c);
+                if (d != null && dev.kelton.drehzahl.obd.UsbSerial.supported(d)) dev.kelton.drehzahl.obd.ObdSource.get(c).poke();
             } else {
                 new SessionReceiver().onReceive(c, i);
             }
@@ -81,7 +82,10 @@ public class CoreService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         SoundEngine.get(this).applyMode();
         SoundEngine.get(this).applyAll();
-        boolean wantSpeed = Prefs.i(Prefs.SPEED_VOL, 0) > 0 && Prefs.i(Prefs.SOURCE, 0) != 0;
+        int src = Prefs.i(Prefs.SOURCE, 0);
+        boolean wantSpeed = (Prefs.i(Prefs.SPEED_VOL, 0) > 0 && src != 0) || src == 2;
+        if (src == 2) dev.kelton.drehzahl.obd.ObdSource.get(this).start();
+        else dev.kelton.drehzahl.obd.ObdSource.get(this).stop();
         VehicleHub hub = VehicleHub.get(this);
         if (wantSpeed && !holding) { hub.addListener(speedVolume); hub.hold(true); holding = true; }
         if (!wantSpeed && holding) { hub.removeListener(speedVolume); hub.hold(false); holding = false; }

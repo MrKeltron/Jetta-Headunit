@@ -59,6 +59,11 @@ public final class Prefs {
     public static final String AUTO_CP = "auto_carplay";
     public static final String BOOT_CP = "boot_carplay";
     public static final String ICON_PACK = "icon_pack";
+    // OBD2
+    public static final String OBD_LINK = "obd_link";       // 0 USB, 1 Bluetooth
+    public static final String OBD_BT_ADDR = "obd_bt_addr";
+    public static final String OBD_BT_NAME = "obd_bt_name";
+    public static final String OBD_TRAFFIC = "obd_traffic";
 
     private Prefs() { }
 

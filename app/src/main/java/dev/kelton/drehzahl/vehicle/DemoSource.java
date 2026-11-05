@@ -68,6 +68,9 @@ public final class DemoSource {
         d.lonG = accel / 9.81f;
         d.latG = 0.38f * (float) Math.sin(t * 0.45f) * Math.min(1f, v / 15f);
         d.fuelLph = 0.8f + powerKw * 0.27f / 0.745f;
+        d.ambientC = 18f;
+        d.mafGs = 3f + powerKw / 1.07f;
+        d.powerEstimated = false;
         d.hasSpeed = d.hasEngine = d.hasG = true;
     }
 }
