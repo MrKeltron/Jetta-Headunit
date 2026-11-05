@@ -49,7 +49,14 @@ public final class IconPack {
         return out;
     }
 
+    /** Used until an icon pack is picked in Settings: OnePro (Dark) if it is installed. */
+    public static final String DEFAULT_PACK = "com.eatos.onedarkpro";
+
     public static synchronized IconPack current(Context c) {
+        if (!Prefs.has(Prefs.ICON_PACK)) {
+            try { c.getPackageManager().getPackageInfo(DEFAULT_PACK, 0); Prefs.put(Prefs.ICON_PACK, DEFAULT_PACK); }
+            catch (PackageManager.NameNotFoundException ignored) { }
+        }
         String want = Prefs.s(Prefs.ICON_PACK, "");
         if (want.isEmpty()) { loaded = null; return null; }
         if (loaded != null && loaded.pkg.equals(want)) return loaded;

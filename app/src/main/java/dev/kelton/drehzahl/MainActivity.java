@@ -150,7 +150,8 @@ public class MainActivity extends Activity implements SensorEventListener {
             item.addView(ic);
             TextView t = W.text(this, RAIL_LABELS[i], 13, Theme.DIM, Theme.medium());
             t.setPadding(0, Theme.dp(6), 0, 0);
-            item.addView(t);
+            t.setGravity(Gravity.CENTER);
+            item.addView(t, W.lp(W.MATCH, W.WRAP));
             item.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     if (idx == CARPLAY && stack.size() > 0 && stack.get(0) == roots[CARPLAY]) {

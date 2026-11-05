@@ -32,6 +32,7 @@ keep com.android.location.fused
 keep com.google.android.setupwizard
 keep com.google.android.ext.services
 keep com.google.android.marvin.talkback       # accessibility
+keep com.google.android.apps.wellbeing        # Android Settings crashes on its home page without it
 keep com.carlink.app                          # CarPlay engine
 keep dev.kelton.drehzahl                      # this project
 keep-match providers
@@ -76,7 +77,6 @@ remove com.google.android.apps.googleassistant
 remove com.google.android.apps.searchlite
 remove com.google.android.apps.assistant
 remove com.google.android.apps.subscriptions.red     # Google One
-remove com.google.android.apps.wellbeing             # Digital Wellbeing
 remove com.google.android.apps.kids.home             # Kids Space
 remove com.google.android.apps.books
 remove com.google.android.apps.magazines             # Google News

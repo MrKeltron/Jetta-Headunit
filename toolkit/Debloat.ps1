@@ -80,9 +80,24 @@ function Remove-Packages {
     Say ('Removed ' + $ok + ' of ' + $Packages.Count + '. Log: ' + $log) Green
 }
 
+# Puts back anything removed earlier that the list now says to keep.
+function Restore-KeptPackages {
+    if (-not (Test-Path $Script:RemovedFile)) { return }
+    $rules = Read-DebloatRules
+    $left = @()
+    foreach ($p in @(Get-Content $Script:RemovedFile | Where-Object { $_.Trim() -ne '' })) {
+        if (Test-Kept $rules $p) {
+            $res = (Adb-Shell ('cmd package install-existing --user 0 ' + $p)).Trim()
+            Say ('  restored ' + $p + ' (now on the keep list): ' + $res) Green
+        } else { $left += $p }
+    }
+    Set-Content -Path $Script:RemovedFile -Value $left -Encoding ASCII
+}
+
 function Start-Debloat {
     Require-Tablet
     Step 'Debloat'
+    Restore-KeptPackages
     $rules = Read-DebloatRules
     $installed = Get-InstalledPackages
     Set-Content -Path (Join-Path $Script:Reports ('packages-before-' + (Get-Stamp) + '.txt')) -Value $installed -Encoding ASCII

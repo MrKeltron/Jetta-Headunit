@@ -63,6 +63,7 @@ public final class Prefs {
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("drehzahl", Context.MODE_PRIVATE);
     }
 
+    public static boolean has(String k) { return sp.contains(k); }
     public static int i(String k, int def) { return sp.getInt(k, def); }
     public static boolean b(String k, boolean def) { return sp.getBoolean(k, def); }
     public static float f(String k, float def) { return sp.getFloat(k, def); }

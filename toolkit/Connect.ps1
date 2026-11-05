@@ -83,6 +83,7 @@ function Read-IpPort {
 }
 
 function Pair-Tablet {
+    if ($Script:AutoYes) { Say 'Pairing needs you at the keyboard. Run START HERE.bat and pick 1.' Red; return $false }
     Step 'Pairing (only needed once per PC)'
     Say 'On the tablet:'
     Say '  1. Settings > System > Developer options > Wireless debugging (turn it ON)'

@@ -135,7 +135,8 @@ public final class W {
         }
         row.addView(texts, new LinearLayout.LayoutParams(0, WRAP, 1f));
         if (right != null) {
-            LinearLayout.LayoutParams p = lp(WRAP, WRAP);
+            ViewGroup.LayoutParams own = right.getLayoutParams();
+            LinearLayout.LayoutParams p = own != null ? new LinearLayout.LayoutParams(own.width, own.height) : lp(WRAP, WRAP);
             p.leftMargin = Theme.dp(12);
             row.addView(right, p);
         }
@@ -223,12 +224,15 @@ public final class W {
     }
 
     public static void setEnabledDeep(View v, boolean on) {
-        v.setEnabled(on);
+        enableTree(v, on);
         v.setAlpha(on ? 1f : 0.45f);
+    }
+
+    private static void enableTree(View v, boolean on) {
+        v.setEnabled(on);
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
-            for (int i = 0; i < g.getChildCount(); i++) setEnabledDeep(g.getChildAt(i), on);
-            g.setAlpha(on ? 1f : 0.45f);
+            for (int i = 0; i < g.getChildCount(); i++) enableTree(g.getChildAt(i), on);
         }
     }
 

@@ -108,10 +108,10 @@ function Open-IconPack {
     $s = Get-Settings
     $id = $s['IconPack']
     $have = Adb-Shell ('pm list packages ' + $id)
-    if ($have -match [regex]::Escape($id)) { Say 'OnePro (Dark) is already installed. Pick it in Drehzahl: Settings > Home & apps > Icon pack.' Green; return }
+    if ($have -match [regex]::Escape($id)) { Say 'OnePro (Dark) is already installed. Pick it in Drehzahl: Settings > Home and apps > Icon pack.' Green; return }
     Adb-Shell ('am start -a android.intent.action.VIEW -d market://details?id=' + $id) | Out-Null
     Say 'The Play Store page is open on the tablet. Buy/install it there.'
-    Say 'Then in Drehzahl: Settings > Home & apps > Icon pack > OnePro (Dark).'
+    Say 'Then in Drehzahl: Settings > Home and apps > Icon pack > OnePro (Dark).'
 }
 
 function Set-CarTweaks {

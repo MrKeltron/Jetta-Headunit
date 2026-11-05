@@ -9,6 +9,7 @@ $Script:ApkFolder    = Join-Path $Script:Root 'apk'
 $Script:SettingsFile = Join-Path $Script:Kit 'settings.ini'
 $Script:Adb          = $null
 $Script:Serial       = $null
+$Script:AutoYes      = $false   # true = answer Y to every question (used by Install-NoQuestions)
 
 foreach ($dir in @($Script:Reports, $Script:ApkFolder)) {
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
@@ -27,6 +28,7 @@ function Step {
 
 function Ask-YesNo {
     param([string]$Question)
+    if ($Script:AutoYes) { Say ($Question + ' [Y/N]: Y (automatic)'); return $true }
     while ($true) {
         $a = Read-Host ($Question + ' [Y/N]')
         if ($a -match '^[Yy]') { return $true }

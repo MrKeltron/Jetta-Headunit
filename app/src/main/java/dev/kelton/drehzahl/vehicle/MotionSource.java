@@ -17,6 +17,7 @@ import dev.kelton.drehzahl.Prefs;
 /**
  * Uses the tablet's own hardware: accelerometer for g-forces, GPS for speed when the tablet has one.
  * Mount calibration: park on level ground, tap Calibrate, and the current gravity direction becomes "up".
+ * The very first start calibrates itself from about one second of readings.
  */
 public final class MotionSource implements SensorEventListener, LocationListener {
     private final SensorManager sm;
@@ -101,8 +102,18 @@ public final class MotionSource implements SensorEventListener, LocationListener
         if (n > 1e-4f) for (int i = 0; i < 3; i++) v[i] /= n;
     }
 
+    private int autoSamples;
+    private final float[] autoSum = new float[3];
+
     @Override public void onSensorChanged(SensorEvent e) {
         System.arraycopy(e.values, 0, raw, 0, 3);
+        if (!Prefs.has(Prefs.G_CAL) && autoSamples < 60) {
+            for (int i = 0; i < 3; i++) autoSum[i] += e.values[i];
+            if (++autoSamples == 60) {
+                for (int i = 0; i < 3; i++) raw[i] = autoSum[i] / 60f;
+                calibrate();
+            }
+        }
         float ax = e.values[0] - up[0] * g0, ay = e.values[1] - up[1] * g0, az = e.values[2] - up[2] * g0;
         float l = (ax * right[0] + ay * right[1] + az * right[2]) / 9.81f;
         float f = (ax * fwd[0] + ay * fwd[1] + az * fwd[2]) / 9.81f;
