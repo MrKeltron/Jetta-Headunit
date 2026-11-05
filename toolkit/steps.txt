@@ -1,0 +1,12 @@
+# OBD2 test round 1: install 0.3.0, look for the vLinker on USB, switch Drehzahl to OBD2
+INSTALL
+SHELL logcat -c
+SHELL dumpsys usb | grep -iE 'idVendor|idProduct|mManufacturerName|mProductName|vendor_id|product_id|manufacturer|product' | head -20
+SHELL am force-stop dev.kelton.drehzahl
+SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei source 2 --ei open 3 --ei page 4
+WAIT 4
+SHOT 01-data-source
+WAIT 8
+SHOT 02-after-12s
+OBDLOG
+LOGCAT
