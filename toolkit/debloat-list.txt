@@ -1,0 +1,117 @@
+# Drehzahl debloat list. Edit freely, one rule per line.
+#   keep         package   never touched, even if a match rule below hits it
+#   keep-match   text      never touch any package whose name contains this text
+#   remove       package   removed after you confirm the whole list
+#   remove-match text      removes any package whose name contains this text
+#   ask          package   asked about one by one
+# Removing is "per user": the app stays on the system partition and can be
+# restored with the Undo option, or reinstalled from the Play Store.
+
+# ---- Never touch: the tablet needs these to boot, connect and install apps ----
+keep com.android.vending                      # Play Store
+keep com.google.android.gms                   # Play Services
+keep com.google.android.gsf                   # Google Services Framework
+keep com.google.android.webview               # Android System WebView
+keep com.google.android.trichromelibrary      # WebView library
+keep com.google.android.inputmethod.latin     # Gboard (the only keyboard)
+keep com.android.systemui
+keep com.android.settings
+keep com.android.shell
+keep com.android.phone
+keep com.android.bluetooth
+keep com.google.android.bluetooth
+keep com.android.packageinstaller
+keep com.google.android.packageinstaller
+keep com.android.permissioncontroller
+keep com.google.android.permissioncontroller
+keep com.android.documentsui
+keep com.google.android.documentsui
+keep com.android.launcher3                    # stock home screen, kept as a backup
+keep com.google.android.apps.nexuslauncher
+keep com.android.location.fused
+keep com.google.android.setupwizard
+keep com.google.android.ext.services
+keep com.google.android.marvin.talkback       # accessibility
+keep com.carlink.app                          # CarPlay engine
+keep dev.kelton.drehzahl                      # this project
+keep-match providers
+keep-match networkstack
+keep-match wifi
+keep-match tethering
+keep-match overlay
+keep-match mainline
+keep-match adservices
+keep-match permission
+keep-match cellbroadcast
+
+# ---- Walmart / onn / preloaded store junk ----
+remove-match walmart
+remove-match vudu
+remove-match digitalturbine
+remove-match .dti.
+remove-match aura.oobe
+remove-match ironsource
+remove-match com.facebook.
+remove-match netflix.partner
+remove-match com.amazon.
+remove-match kidoz
+remove-match appcloud
+remove-match tiktok
+
+# ---- Google extras you do not need in a car ----
+remove com.google.android.youtube                    # YouTube
+remove com.google.android.apps.youtube.kids          # YouTube Kids
+remove com.google.android.gm                         # Gmail
+remove com.google.android.apps.docs                  # Drive
+remove com.google.android.apps.photos                # Photos
+remove com.google.android.apps.photosgo
+remove com.google.android.apps.gallery.go
+remove com.google.android.videos                     # Google TV
+remove com.google.android.apps.tachyon               # Meet
+remove com.google.android.apps.messaging
+remove com.google.android.calendar
+remove com.google.android.keep
+remove com.google.android.googlequicksearchbox      # Google app / Assistant
+remove com.google.android.apps.googleassistant
+remove com.google.android.apps.searchlite
+remove com.google.android.apps.assistant
+remove com.google.android.apps.subscriptions.red     # Google One
+remove com.google.android.apps.wellbeing             # Digital Wellbeing
+remove com.google.android.apps.kids.home             # Kids Space
+remove com.google.android.apps.books
+remove com.google.android.apps.magazines             # Google News
+remove com.google.android.apps.podcasts
+remove com.google.android.apps.chromecast.app        # Google Home
+remove com.google.android.apps.walletnfcrel
+remove com.google.android.feedback
+remove com.google.android.printservice.recommendation
+remove com.google.android.apps.restore
+remove com.google.android.as                         # Android System Intelligence
+remove com.google.android.as.oss                     # Private Compute Services
+remove com.google.android.apps.turbo                 # Device Health Services
+remove com.google.ar.core
+remove com.google.android.play.games
+remove com.google.android.projection.gearhead        # Android Auto phone app
+remove com.google.android.apps.tips
+remove com.google.android.apps.setupwizard.searchselector
+remove com.google.android.apps.cameralite
+remove com.android.egg                               # Android version easter egg
+remove com.android.dreams.basic                      # screensavers
+remove com.android.dreams.phototable
+remove com.android.bookmarkprovider
+remove com.android.printspooler
+remove com.android.bips
+remove com.android.stk
+remove com.android.musicfx                           # old EQ, would fight Drehzahl's EQ
+remove-match hotwordenrollment
+
+# ---- Your call, asked one by one ----
+ask com.android.chrome                               # Chrome browser
+ask com.google.android.apps.maps                     # Google Maps (CarPlay already has maps)
+ask com.google.android.apps.youtube.music            # YouTube Music
+ask com.google.android.apps.nbu.files                # Files by Google
+ask com.google.android.apps.adm                      # Find My Device (could find a stolen tablet)
+ask com.google.android.contacts
+ask com.google.android.deskclock                     # Clock app
+ask com.google.android.calculator
+ask com.spotify.music

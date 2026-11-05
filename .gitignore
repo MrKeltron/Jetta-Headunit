@@ -1,0 +1,11 @@
+build/
+signing/
+*.jks
+*.keystore
+toolkit/platform-tools/
+toolkit/settings.local.ini
+reports/
+apk/
+.idea/
+*.iml
+.DS_Store
