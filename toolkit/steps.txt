@@ -1,8 +1,10 @@
-# Round: install 0.4.1 (OBD2 readings no longer drop out) on the onn, check the Lenovo if it is plugged in
+# Round: install 0.4.2 (Bluetooth LE OBD2 adapters) on the onn, and on the Lenovo if it is plugged in
 DEVICE wifi
 INSTALL
 SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 0
-SAVE t1-version dumpsys package dev.kelton.drehzahl | grep -E 'versionName|versionCode'
+WAIT 4
+SAVE t1-version dumpsys package dev.kelton.drehzahl | grep -E 'versionName|versionCode|BLUETOOTH_SCAN'
+SAVE t1-crash logcat -d -b crash -t 50
 DEVICE 0123456789ABCDEF
 INSTALL
 SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 1 --ei page 4

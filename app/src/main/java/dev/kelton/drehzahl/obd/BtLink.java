@@ -10,7 +10,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
-/** Classic Bluetooth (SPP) link, the kind most ELM327 adapters use on Android. BLE-only adapters are not supported. */
+/** Classic Bluetooth (SPP) link, the kind most ELM327 adapters use on Android. Bluetooth LE adapters use BleLink. */
 public final class BtLink implements Link {
     private static final UUID SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private final BluetoothSocket socket;

@@ -172,7 +172,7 @@ public final class ObdSource implements Runnable {
 
         setState(SETUP, "Talking to the adapter");
         boolean found = false;
-        for (int b : (link instanceof BtLink ? new int[] { 0 } : BAUDS)) {
+        for (int b : (link instanceof UsbSerial ? BAUDS : new int[] { 0 })) {
             if (b > 0) link.setBaud(b);
             if (elm.probe()) { found = true; if (b > 0) log("adapter answers at " + b + " baud"); break; }
         }
@@ -425,6 +425,7 @@ public final class ObdSource implements Runnable {
         BluetoothManager bm = (BluetoothManager) ctx.getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter ba = bm == null ? null : bm.getAdapter();
         if (ba == null || !ba.isEnabled()) throw new WaitException("Turn Bluetooth on");
+        if (Prefs.b(Prefs.OBD_BT_LE, false)) return new BleLink(ctx, ba, addr);
         return new BtLink(ba, addr);
     }
 

@@ -66,6 +66,7 @@ public final class Prefs {
     public static final String OBD_LINK = "obd_link";       // 0 USB, 1 Bluetooth
     public static final String OBD_BT_ADDR = "obd_bt_addr";
     public static final String OBD_BT_NAME = "obd_bt_name";
+    public static final String OBD_BT_LE = "obd_bt_le";     // the picked adapter talks Bluetooth LE (no pairing)
     public static final String OBD_TRAFFIC = "obd_traffic";
 
     private Prefs() { }

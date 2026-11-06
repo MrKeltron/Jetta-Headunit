@@ -79,7 +79,9 @@ final class Legal {
           + "Icon pack appfilter.xml format used by third-party Android launchers\n"
           + "Android Bluetooth source (AOSP): the A2DP sink and AVRCP controller roles and the settings that switch them on\n"
           + "Magisk module format (module.prop, system.prop, system folder overlays)\n"
-          + "CarLink's own audio statistics and notes on Wi-Fi gaps, used to find the CarPlay audio dropouts" },
+          + "CarLink's own audio statistics and notes on Wi-Fi gaps, used to find the CarPlay audio dropouts\n"
+          + "ELM327 datasheet (Elm Electronics): commands, timeouts and CAN header settings\n"
+          + "Published Bluetooth LE service layouts of common OBD2 adapters (Vgate, Veepeak, HM-10 style modules)" },
         { "License", "Drehzahl is released under the MIT License. The full text is in the LICENSE file of the source code." },
     };
 

@@ -363,7 +363,7 @@ public class VehicleScreen extends SplitScreen {
         String[] info = {
                 "Simulated drive with warm-up, gear changes and boost. Good for testing screens at home.",
                 "Accelerometer for g-forces, GPS for speed if this tablet has GPS. No engine data.",
-                "ELM327 adapter in the OBD2 port, by USB cable or classic Bluetooth. Engine data, trouble codes.",
+                "ELM327 adapter in the OBD2 port, by USB cable, classic Bluetooth or Bluetooth LE. Engine data, trouble codes.",
                 "Live data from a flash tuner. Not built yet."
         };
         for (int i = 0; i < 4; i++) {
@@ -394,7 +394,7 @@ public class VehicleScreen extends SplitScreen {
         }));
         if (Prefs.i(Prefs.OBD_LINK, 0) == 1) {
             String name = Prefs.s(Prefs.OBD_BT_NAME, "");
-            p.addView(W.chevronRow(c, "Bluetooth adapter", name.isEmpty() ? "Pick a paired adapter (pair it in Android Bluetooth settings first)" : name,
+            p.addView(W.chevronRow(c, "Bluetooth adapter", name.isEmpty() ? "Pick your adapter: paired ones, plus Bluetooth LE ones nearby (no pairing needed)" : name,
                     new View.OnClickListener() { public void onClick(View v) { pickBluetooth(); } }));
         }
         LinearLayout card = W.card(c);
@@ -443,26 +443,17 @@ public class VehicleScreen extends SplitScreen {
     }
 
     private void pickBluetooth() {
-        android.bluetooth.BluetoothManager bm = (android.bluetooth.BluetoothManager) host.getSystemService(Context.BLUETOOTH_SERVICE);
-        android.bluetooth.BluetoothAdapter ba = bm == null ? null : bm.getAdapter();
-        if (ba == null || !ba.isEnabled()) { W.toast(host, "Turn Bluetooth on first"); return; }
-        final java.util.List<String> names = new java.util.ArrayList<>(), addrs = new java.util.ArrayList<>();
-        try {
-            for (android.bluetooth.BluetoothDevice d : ba.getBondedDevices()) {
-                names.add((d.getName() == null ? "Unnamed" : d.getName()) + "  (" + d.getAddress() + ")");
-                addrs.add(d.getAddress());
-            }
-        } catch (SecurityException e) { W.toast(host, "Bluetooth permission missing. Run Install in the PC toolkit."); return; }
-        if (names.isEmpty()) { W.toast(host, "No paired devices. Pair the adapter in Android Bluetooth settings."); return; }
-        W.pick(host, "Bluetooth adapter", names.toArray(new String[0]), new Controls.IntCb() {
-            public void on(int i) {
-                Prefs.put(Prefs.OBD_BT_ADDR, addrs.get(i));
-                Prefs.put(Prefs.OBD_BT_NAME, names.get(i));
+        BtAdapterPicker.show(host, new BtAdapterPicker.Picked() {
+            public void on(String address, String label, boolean le) {
+                Prefs.put(Prefs.OBD_BT_ADDR, address);
+                Prefs.put(Prefs.OBD_BT_NAME, label);
+                Prefs.put(Prefs.OBD_BT_LE, le);
                 dev.kelton.drehzahl.obd.ObdSource.get(host).restart();
                 refreshPage();
             }
         });
     }
+
 
     // ---- Trouble codes ----
     private void codes(final Context c, final LinearLayout p) {

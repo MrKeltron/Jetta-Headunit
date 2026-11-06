@@ -39,14 +39,13 @@ fonts or logos are used.
 | CarPlay | Opens [CarLink](https://github.com/F-e-n-y-x/CarLink) (separate app, AGPL-3.0, DiPlay engine). Opens by itself when an iPhone is plugged in |
 | Sound | 10-band EQ with presets, treble/mid/bass, balance and fader pad, sound focus, bass boost, surround, loudness, 3-band compressor, limiter, reverb, max switch-on volume, speed-dependent volume |
 | Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
-| OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers) or classic Bluetooth. Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
+| OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers), classic Bluetooth, or Bluetooth LE (no pairing; finds the adapter's data channel by itself). Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
 | Screens | Drawn for 1280 x 800 dp. Smaller tablets (for example 800 x 1280 at 240 dpi) shrink the whole layout to fit instead of cutting it off |
 | Settings | Day/night/auto (light sensor), accent color, brightness, hide system bars, keep screen on, time and date, units, icon pack, connections, tablet info, terms, credits, reset |
 | Apps | App drawer with icon pack support (any pack using the standard appfilter.xml, such as OnePro Dark) |
 
 ## Not built yet
 
-- Bluetooth LE adapters (classic Bluetooth and USB work).
 - Manufacturer-specific readings (oil temperature on cars that do not report it over generic OBD2, actual vs requested boost).
 - Tuner link data source.
 - Fader and front focus output. They need a 4-channel USB audio interface; the settings are saved already.
