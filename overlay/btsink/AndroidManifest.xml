@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static resource overlay for the Bluetooth app on Android 10 to 12. Shipped inside the Drehzahl APK
+     and placed in /product/overlay by a root module when the Bluetooth receiver is switched on. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.kelton.drehzahl.btreceiver">
+    <overlay android:targetPackage="com.android.bluetooth" android:isStatic="true" android:priority="50" />
+    <application android:hasCode="false" />
+</manifest>

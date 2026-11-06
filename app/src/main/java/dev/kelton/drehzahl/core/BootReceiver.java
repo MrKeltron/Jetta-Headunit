@@ -12,6 +12,7 @@ public class BootReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context c, Intent i) {
         if (!Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) return;
         Prefs.init(c);
+        Prefs.put(Prefs.BT_REBOOT, false);
         CoreService.start(c);
         if (Prefs.b(Prefs.BOOT_CP, false)) CarLink.launch(c);
     }

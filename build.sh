@@ -8,7 +8,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION_NAME=$(tr -d ' \r\n' < VERSION)
-VERSION_CODE=${VERSION_CODE:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}
+# 1.2.3 -> 10203, so local and GitHub builds of the same version get the same code and newer versions always upgrade.
+VERSION_CODE=${VERSION_CODE:-$(echo "$VERSION_NAME" | awk -F. '{ printf "%d", $1 * 10000 + $2 * 100 + $3 }')}
 MIN_SDK=28
 TARGET_SDK=35
 OUT=build
@@ -51,6 +52,28 @@ say "Drehzahl $VERSION_NAME ($VERSION_CODE) using $(basename "$(dirname "$ANDROI
 rm -rf "$OUT"
 mkdir -p "$OUT/gen" "$OUT/classes" "$OUT/dex" "$OUT/out"
 
+say "Signing key"
+if [ -z "${KEYSTORE:-}" ] && [ -f signing/keystore.properties ]; then
+    # shellcheck disable=SC1091
+    . signing/keystore.properties
+fi
+if [ -z "${KEYSTORE:-}" ]; then
+    KEYSTORE="$OUT/throwaway.jks"; KEYSTORE_PASS=throwaway; KEY_ALIAS=drehzahl
+    keytool -genkeypair -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASS" -keypass "$KEYSTORE_PASS" -alias "$KEY_ALIAS" \
+        -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Drehzahl test" >/dev/null 2>&1
+    say "No signing key configured: used a throwaway key"
+fi
+say "Bluetooth receiver overlay"
+mkdir -p "$OUT/overlay" "$OUT/assets"
+"$AAPT2" compile --dir overlay/btsink/res -o "$OUT/overlay/res.zip"
+"$AAPT2" link -I "$RES_JAR" --manifest overlay/btsink/AndroidManifest.xml \
+    --min-sdk-version 29 --target-sdk-version 29 --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
+    -o "$OUT/overlay/unsigned.apk" "$OUT/overlay/res.zip"
+"$ZIPALIGN" -f -p 4 "$OUT/overlay/unsigned.apk" "$OUT/overlay/aligned.apk"
+"$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" --key-pass "pass:$KEYSTORE_PASS" \
+    --ks-key-alias "$KEY_ALIAS" --min-sdk-version 29 --v4-signing-enabled false --out "$OUT/assets/btsink-overlay.apk" "$OUT/overlay/aligned.apk"
+[ -d app/src/main/assets ] && cp -r app/src/main/assets/. "$OUT/assets/"
+
 say "Resources"
 "$AAPT2" compile --dir app/src/main/res -o "$OUT/res.zip"
 "$AAPT2" link -I "$RES_JAR" \
@@ -58,7 +81,7 @@ say "Resources"
     --min-sdk-version "$MIN_SDK" --target-sdk-version "$TARGET_SDK" \
     --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
     --java "$OUT/gen" --auto-add-overlay \
-    $( [ -d app/src/main/assets ] && echo "-A app/src/main/assets" ) \
+    -A "$OUT/assets" \
     -o "$OUT/base.apk" "$OUT/res.zip"
 
 say "Java"
@@ -84,16 +107,6 @@ PY
 "$ZIPALIGN" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
 say "Sign"
-if [ -z "${KEYSTORE:-}" ] && [ -f signing/keystore.properties ]; then
-    # shellcheck disable=SC1091
-    . signing/keystore.properties
-fi
-if [ -z "${KEYSTORE:-}" ]; then
-    KEYSTORE="$OUT/throwaway.jks"; KEYSTORE_PASS=throwaway; KEY_ALIAS=drehzahl
-    keytool -genkeypair -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASS" -keypass "$KEYSTORE_PASS" -alias "$KEY_ALIAS" \
-        -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Drehzahl test" >/dev/null 2>&1
-    say "No signing key configured: used a throwaway key"
-fi
 APK="$OUT/out/Drehzahl-$VERSION_NAME.apk"
 "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" --key-pass "pass:$KEYSTORE_PASS" \
     --ks-key-alias "$KEY_ALIAS" --min-sdk-version "$MIN_SDK" --out "$APK" "$OUT/aligned.apk"

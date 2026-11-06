@@ -63,6 +63,7 @@ public class ObdConsoleScreen extends Screen {
         final EditText in = new EditText(c);
         in.setHint("AT or OBD command, for example 010C");
         in.setTypeface(Theme.mono());
+        in.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Theme.dpf(18));
         in.setTextColor(Theme.TEXT);
         in.setHintTextColor(Theme.FAINT);
         in.setSingleLine(true);

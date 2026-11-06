@@ -9,3 +9,4 @@ apk/
 .idea/
 *.iml
 .DS_Store
+tools/test/out/

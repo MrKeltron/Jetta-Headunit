@@ -71,6 +71,7 @@ public final class MediaHub implements MediaSessionManager.OnActiveSessionsChang
             }
             if (pick == null && !list.isEmpty()) pick = list.get(0);
         }
+        BtReceiver.get(ctx).sessions(list);
         if (active != null) active.unregisterCallback(cb);
         active = pick;
         if (active != null) active.registerCallback(cb, h);
@@ -183,6 +184,8 @@ public final class MediaHub implements MediaSessionManager.OnActiveSessionsChang
     }
 
     public void skipToQueueItem(long id) { if (active != null) active.getTransportControls().skipToQueueItem(id); }
+
+    public boolean isBluetooth() { return BtReceiver.isBluetoothSession(active); }
 
     public void openApp(Context c) {
         String p = packageName();

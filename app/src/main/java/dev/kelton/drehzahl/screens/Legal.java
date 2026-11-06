@@ -27,6 +27,11 @@ final class Legal {
         { "Tablet changes",
           "The PC toolkit can remove preinstalled apps and change tablet settings over ADB. Removals can be undone with the toolkit's "
           + "Undo option or a factory reset. You make these changes at your own risk." },
+        { "Root features",
+          "On a rooted tablet Drehzahl can add a small module (\"Drehzahl Bluetooth receiver\") that changes how Android's Bluetooth "
+          + "works so phones can play music to the tablet. It only runs when you switch it on and confirm the root prompt, and it can "
+          + "be switched off on the same page. On Android 12 and older it stops the tablet from sending sound to Bluetooth headphones "
+          + "while it is on. Root access bypasses Android's normal protections; you use it at your own risk." },
         { "Other apps and services",
           "CarPlay runs in CarLink, a separate app with its own license (AGPL-3.0) and its own terms. Drehzahl only opens it. Music, "
           + "maps and other apps you launch from Drehzahl are covered by their own terms." },
@@ -34,8 +39,8 @@ final class Legal {
           "Drehzahl does not ask for internet access and sends nothing anywhere. Settings, trip memories and service data stay on the "
           + "tablet. Media information is read from the tablet to show what is playing and is not stored." },
         { "Names and trademarks",
-          "Drehzahl is not made by, endorsed by or connected to Volkswagen AG, Apple Inc., Google LLC, Walmart Inc. or any car or "
-          + "tablet maker. Volkswagen, Jetta, GLI, CarPlay, iPhone, Android and onn are trademarks of their owners and are used only "
+          "Drehzahl is not made by, endorsed by or connected to Volkswagen AG, Apple Inc., Google LLC, Walmart Inc., Lenovo or any car "
+          + "or tablet maker. Volkswagen, Jetta, GLI, CarPlay, iPhone, Android, onn and Lenovo are trademarks of their owners and are used only "
           + "to describe compatibility." },
         { "No warranty",
           "Drehzahl is provided as is, without warranty of any kind. The authors are not liable for any damage, loss, fines or injury "
@@ -67,10 +72,14 @@ final class Legal {
           + "JetBrains Mono by JetBrains, used by the Code theme\n"
           + "Font files and license texts come from the Fontsource packages; the licenses are in the fonts folder of the source code" },
         { "Optional add-ons",
-          "OnePro (Dark) icon pack by Eatos, sold separately on Google Play" },
+          "OnePro (Dark) icon pack by Eatos, sold separately on Google Play\n"
+          + "The Bluetooth receiver module works with the root tools Magisk, KernelSU and APatch (installed separately)" },
         { "References",
           "Android audio effects documentation (DynamicsProcessing, Equalizer, BassBoost, Virtualizer, LoudnessEnhancer, PresetReverb)\n"
-          + "Icon pack appfilter.xml format used by third-party Android launchers" },
+          + "Icon pack appfilter.xml format used by third-party Android launchers\n"
+          + "Android Bluetooth source (AOSP): the A2DP sink and AVRCP controller roles and the settings that switch them on\n"
+          + "Magisk module format (module.prop, system.prop, system folder overlays)\n"
+          + "CarLink's own audio statistics and notes on Wi-Fi gaps, used to find the CarPlay audio dropouts" },
         { "License", "Drehzahl is released under the MIT License. The full text is in the LICENSE file of the source code." },
     };
 

@@ -54,6 +54,9 @@ public final class Prefs {
     public static final String STAGE = "stage";            // reverb preset 0..6
     public static final String SPEED_VOL = "speed_vol";    // 0 off .. 3 high
     public static final String START_VOL = "start_vol";    // max switch-on volume, percent
+    public static final String BT_MODULE = "bt_module";    // Drehzahl's Bluetooth receiver module is installed
+    public static final String BT_REBOOT = "bt_reboot";    // the receiver module changed and needs a restart
+    public static final String BT_NUDGE = "bt_nudge";      // press play when the phone plays but nothing is heard
     public static final String FX_MODE = "fx_mode";        // 0 apps that ask, 1 all players, 2 whole tablet
     // CarPlay / home
     public static final String AUTO_CP = "auto_carplay";

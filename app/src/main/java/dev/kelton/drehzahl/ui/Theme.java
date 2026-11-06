@@ -43,8 +43,19 @@ public final class Theme {
 
     private Theme() { }
 
+    /** Layouts are drawn for a 1280 x 800 dp landscape screen; smaller screens shrink everything to fit. */
+    public static final float DESIGN_W = 1280f, DESIGN_H = 800f;
+    public static float fit = 1f;
+
     public static void init(Context c, boolean isNight) {
-        density = c.getResources().getDisplayMetrics().density;
+        android.util.DisplayMetrics m = new android.util.DisplayMetrics();
+        android.view.WindowManager wm = (android.view.WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+        if (wm != null) wm.getDefaultDisplay().getRealMetrics(m);
+        else m = c.getResources().getDisplayMetrics();
+        float wDp = Math.max(m.widthPixels, m.heightPixels) / m.density;
+        float hDp = Math.min(m.widthPixels, m.heightPixels) / m.density;
+        fit = Math.max(0.5f, Math.min(1f, Math.min(wDp / DESIGN_W, hDp / DESIGN_H)));
+        density = m.density * fit;
         night = isNight;
         style = Math.max(0, Math.min(STYLE_NAMES.length - 1, Prefs.i(Prefs.STYLE, GLI)));
         switch (style) {

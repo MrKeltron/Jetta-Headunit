@@ -264,7 +264,8 @@ public class SettingsScreen extends SplitScreen {
         p.addView(W.valueRow(c, "Drehzahl version", ver));
         p.addView(W.valueRow(c, "Tablet", Build.MANUFACTURER + " " + Build.MODEL));
         p.addView(W.valueRow(c, "Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"));
-        p.addView(W.valueRow(c, "Screen", dm.widthPixels + " x " + dm.heightPixels + " px, " + dm.densityDpi + " dpi"));
+        p.addView(W.valueRow(c, "Screen", dm.widthPixels + " x " + dm.heightPixels + " px, " + dm.densityDpi + " dpi"
+                + (Theme.fit < 1f ? ", layout scaled to " + Math.round(Theme.fit * 100) + "%" : "")));
         p.addView(W.header(c, "Hardware Drehzahl can use"));
         p.addView(W.valueRow(c, "Accelerometer (g-meter)", yes(sm != null && sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null)));
         p.addView(W.valueRow(c, "Light sensor (auto night mode)", yes(sm != null && sm.getDefaultSensor(Sensor.TYPE_LIGHT) != null)));

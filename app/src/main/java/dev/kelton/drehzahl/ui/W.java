@@ -28,8 +28,12 @@ public final class W {
     public interface TextCb { void on(String v); }
 
     public static void askText(Context c, String title, String current, final TextCb cb) {
+        askText(c, title, current, true, cb);
+    }
+
+    public static void askText(Context c, String title, String current, boolean caps, final TextCb cb) {
         final EditText et = new EditText(c);
-        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        et.setInputType(InputType.TYPE_CLASS_TEXT | (caps ? InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS : InputType.TYPE_TEXT_FLAG_CAP_WORDS));
         et.setText(current);
         et.setSelectAllOnFocus(true);
         FrameLayout f = new FrameLayout(c);
@@ -46,7 +50,7 @@ public final class W {
     public static TextView text(Context c, String s, float sp, int color) {
         TextView t = new TextView(c);
         t.setText(s);
-        t.setTextSize(sp * Theme.textScale);
+        t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Theme.dpf(sp * Theme.textScale));
         t.setTextColor(color);
         t.setTypeface(Theme.regular());
         t.setIncludeFontPadding(false);

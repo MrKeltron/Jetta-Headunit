@@ -1,12 +1,8 @@
-# OBD2 test round 1: install 0.3.0, look for the vLinker on USB, switch Drehzahl to OBD2
-INSTALL
-SHELL logcat -c
-SHELL dumpsys usb | grep -iE 'idVendor|idProduct|mManufacturerName|mProductName|vendor_id|product_id|manufacturer|product' | head -20
-SHELL am force-stop dev.kelton.drehzahl
-SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei source 2 --ei open 3 --ei page 4
-WAIT 4
-SHOT 01-data-source
+# Next round: check the Lenovo after its restart (plug it in by USB first)
+DEVICE 0123456789ABCDEF
+SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 1 --ei page 4
 WAIT 8
-SHOT 02-after-12s
-OBDLOG
-LOGCAT
+SHOT t2-after-restart
+SAVE t2-bt dumpsys bluetooth_manager | grep -iE 'Profile:|Sink|A2DP'
+SAVE t2-overlay cmd overlay list | grep -i -B1 -A1 bluetooth
+RSAVE t2-module ls -lRZ /data/adb/modules/drehzahl_btsink
