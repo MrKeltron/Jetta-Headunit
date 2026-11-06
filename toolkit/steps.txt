@@ -1,14 +1,28 @@
-# Round: install 0.4.2 (Bluetooth LE OBD2 adapters) on the onn, and on the Lenovo if it is plugged in
+# Round: test Follow car power on the onn with a fake charger (plug, unplug, replug, quick crank blip)
 DEVICE wifi
 INSTALL
-SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 0
-WAIT 4
-SAVE t1-version dumpsys package dev.kelton.drehzahl | grep -E 'versionName|versionCode|BLUETOOTH_SCAN'
-SAVE t1-crash logcat -d -b crash -t 50
-DEVICE 0123456789ABCDEF
-INSTALL
-SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 1 --ei page 4
-WAIT 8
-SHOT t2-after-restart
-SAVE t2-bt dumpsys bluetooth_manager | grep -iE 'Profile:|Sink|A2DP'
-RSAVE t2-module ls -lRZ /data/adb/modules/drehzahl_btsink
+SHELL appops set dev.kelton.drehzahl TURN_SCREEN_ON allow
+SHELL dpm set-active-admin --user 0 dev.kelton.drehzahl/.core.ScreenAdmin
+SAVE pf-0-state dumpsys battery | head -12; cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1; settings get system screen_off_timeout; dumpsys activity services dev.kelton.drehzahl | grep -E 'ServiceRecord|isForeground' | head -4
+SHELL logcat -c
+SHELL am start -n dev.kelton.drehzahl/.MainActivity --ez power_follow true --ei open 0
+WAIT 3
+SHELL dumpsys battery set ac 1
+WAIT 3
+SAVE pf-1-plugged dumpsys power | grep -E 'mWakefulness='
+SHELL dumpsys battery set ac 0
+WAIT 14
+SAVE pf-2-unplugged dumpsys power | grep -E 'mWakefulness='
+SHELL dumpsys battery set ac 1
+WAIT 2
+SAVE pf-3-replugged dumpsys power | grep -E 'mWakefulness='
+SHOT pf-3-intro
+WAIT 7
+SHOT pf-4-home
+SHELL dumpsys battery set ac 0
+WAIT 3
+SHELL dumpsys battery set ac 1
+WAIT 13
+SAVE pf-5-crank dumpsys power | grep -E 'mWakefulness='
+SAVE pf-6-log logcat -d -s Drehzahl:I
+SHELL dumpsys battery reset

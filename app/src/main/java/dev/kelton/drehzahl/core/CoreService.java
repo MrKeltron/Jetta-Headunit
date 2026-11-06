@@ -77,6 +77,7 @@ public class CoreService extends Service {
         eng.applyStartupVolume();
         watcher = new SessionWatcher(this);
         watcher.start();
+        PowerFollow.get(this).start();
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -115,6 +116,7 @@ public class CoreService extends Service {
     @Override public void onDestroy() {
         try { unregisterReceiver(receiver); } catch (RuntimeException ignored) { }
         if (watcher != null) watcher.stop();
+        PowerFollow.get(this).stop();
         if (holding) { VehicleHub.get(this).removeListener(speedVolume); VehicleHub.get(this).hold(false); }
         super.onDestroy();
     }

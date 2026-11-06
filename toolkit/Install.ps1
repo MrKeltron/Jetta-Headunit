@@ -9,6 +9,7 @@ function Install-Apk {
     if ($r.Text -match 'UPDATE_INCOMPATIBLE|signatures do not match') {
         Say 'The installed copy was signed with a different key, so it cannot be updated in place.' Yellow
         if (Ask-YesNo ('Uninstall the old ' + $Package + ' first? (its settings will be reset)')) {
+            Adb-Shell ('dpm remove-active-admin --user 0 ' + $Package + '/.core.ScreenAdmin') | Out-Null
             Invoke-Adb @('uninstall', $Package) | Out-Null
             $r = Invoke-Adb @('install', '-g', $Apk)
             Say ('  ' + ($r.Text.Trim() -split "`n" | Select-Object -Last 1)) DarkGray
@@ -61,6 +62,7 @@ function Install-Drehzahl {
         ('pm grant ' + $pkg + ' android.permission.WRITE_SECURE_SETTINGS'),
         ('appops set ' + $pkg + ' WRITE_SETTINGS allow'),
         ('appops set ' + $pkg + ' RUN_ANY_IN_BACKGROUND allow'),
+        ('appops set ' + $pkg + ' TURN_SCREEN_ON allow'),
         ('dumpsys deviceidle whitelist +' + $pkg)
     )
     foreach ($c in $cmds) {

@@ -54,6 +54,9 @@ public final class Prefs {
     public static final String STAGE = "stage";            // reverb preset 0..6
     public static final String SPEED_VOL = "speed_vol";    // 0 off .. 3 high
     public static final String START_VOL = "start_vol";    // max switch-on volume, percent
+    public static final String POWER_FOLLOW = "power_follow"; // screen off without power, intro and home when it returns
+    public static final String POWER_WAIT = "power_wait";     // seconds to wait before the screen turns off
+    public static final String POWER_PAUSE = "power_pause";   // pause music when power is lost
     public static final String BT_MODULE = "bt_module";    // Drehzahl's Bluetooth receiver module is installed
     public static final String BT_REBOOT = "bt_reboot";    // the receiver module changed and needs a restart
     public static final String BT_NUDGE = "bt_nudge";      // press play when the phone plays but nothing is heard

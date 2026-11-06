@@ -405,8 +405,10 @@ public class MainActivity extends Activity implements SensorEventListener {
             any = true;
         }
         if (i.hasExtra("open")) { go(i.getIntExtra("open", 0), i.getIntExtra("page", 0)); any = true; }
+        if (i.hasExtra("power_follow")) { Prefs.put(Prefs.POWER_FOLLOW, i.getBooleanExtra("power_follow", false)); any = true; }
+        if (i.getBooleanExtra("wake", false)) wakeUp();
         if (i.getBooleanExtra("intro", false)) { playIntro(); any = true; }
-        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro");
+        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro"); i.removeExtra("wake"); i.removeExtra("power_follow");
         return any;
     }
 
@@ -463,6 +465,22 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         getWindow().setStatusBarColor(Theme.BG);
         getWindow().setNavigationBarColor(Theme.BG);
+    }
+
+    /**
+     * Car power came back: turn the screen on and, only when the tablet has no PIN, pattern or password,
+     * get past the swipe lock screen. Both are handed back after a few seconds so a later screen off stays off.
+     */
+    private void wakeUp() {
+        setTurnScreenOn(true);
+        if (!dev.kelton.drehzahl.core.PowerFollow.secureLock(this)) {
+            setShowWhenLocked(true);
+            android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            if (km != null && km.isKeyguardLocked()) km.requestDismissKeyguard(this, null);
+        }
+        getWindow().getDecorView().postDelayed(new Runnable() {
+            public void run() { setTurnScreenOn(false); setShowWhenLocked(false); }
+        }, 3000);
     }
 
     /** Android 10 and older drop the full-screen flags after dialogs and app switches. */

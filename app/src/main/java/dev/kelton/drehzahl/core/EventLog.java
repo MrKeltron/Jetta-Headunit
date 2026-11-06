@@ -22,6 +22,7 @@ public final class EventLog {
     private EventLog() { }
 
     public static void add(String msg) {
+        android.util.Log.i("Drehzahl", msg);
         synchronized (lines) {
             lines.add(fmt.format(new Date()) + "  " + msg);
             while (lines.size() > MAX) lines.remove(0);

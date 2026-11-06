@@ -69,6 +69,39 @@ public class SettingsScreen extends SplitScreen {
     }
 
     // ---- Display ----
+    /** Follow car power: screen off when the ignition turns off, startup animation and home screen when it comes back. */
+    private void powerRows(final Context c, LinearLayout p) {
+        final boolean on = Prefs.b(Prefs.POWER_FOLLOW, false);
+        String sub = "Turns the screen off when the car's power goes away. When power comes back the screen wakes, "
+                + "the startup animation plays and the home screen opens.";
+        if (dev.kelton.drehzahl.core.PowerFollow.secureLock(c)) sub += " This tablet has a screen lock, so it wakes to the lock screen.";
+        else if (on && !dev.kelton.drehzahl.core.PowerFollow.canLock(c)) sub += " Not allowed to turn the screen off yet: switch this off and on again.";
+        p.addView(W.toggleRow(c, "Follow car power", sub, on, new Controls.BoolCb() {
+            public void on(boolean v) {
+                Prefs.put(Prefs.POWER_FOLLOW, v);
+                if (v && !dev.kelton.drehzahl.core.PowerFollow.canLock(host)) {
+                    Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                            .putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, dev.kelton.drehzahl.core.PowerFollow.admin(host))
+                            .putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                                    "Lets Drehzahl turn the screen off when the car's power goes away. This is the only thing it is allowed to do.");
+                    try { host.startActivity(i); } catch (RuntimeException e) { W.toast(host, "Android did not open the permission screen"); }
+                }
+                if (!v) dev.kelton.drehzahl.core.PowerFollow.dropAdmin(host);
+                refreshPage();
+            }
+        }));
+        if (!on) return;
+        int wait = Prefs.i(Prefs.POWER_WAIT, 10), sel = 2;
+        for (int k = 0; k < dev.kelton.drehzahl.core.PowerFollow.WAIT_S.length; k++) if (dev.kelton.drehzahl.core.PowerFollow.WAIT_S[k] == wait) sel = k;
+        p.addView(W.choiceRow(c, "Wait before the screen turns off", "Keeps it on while the engine cranks and the car briefly cuts power",
+                new String[] { "None", "5 s", "10 s", "30 s", "1 min" }, sel, new Controls.IntCb() {
+                    public void on(int v) { Prefs.put(Prefs.POWER_WAIT, dev.kelton.drehzahl.core.PowerFollow.WAIT_S[v]); }
+                }));
+        p.addView(W.toggleRow(c, "Pause music when power is lost", null, Prefs.b(Prefs.POWER_PAUSE, true), new Controls.BoolCb() {
+            public void on(boolean v) { Prefs.put(Prefs.POWER_PAUSE, v); }
+        }));
+    }
+
     private void display(Context c, LinearLayout p) {
         p.addView(W.header(c, "Theme"));
         for (int i = 0; i < Theme.STYLE_NAMES.length; i++) {
@@ -142,6 +175,7 @@ public class SettingsScreen extends SplitScreen {
                 });
         p.addView(stayRow);
         if (!secure) W.setEnabledDeep(stayRow, false);
+        powerRows(c, p);
         p.addView(W.toggleRow(c, "Animations", "Fade between screens",
                 Prefs.b(Prefs.ANIM, true), new Controls.BoolCb() { public void on(boolean v) { Prefs.put(Prefs.ANIM, v); } }));
         p.addView(W.chevronRow(c, "Screen off", "Turns the screen black. Tap anywhere to wake it. Long press the clock does the same.", new View.OnClickListener() {
