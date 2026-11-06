@@ -54,7 +54,8 @@ public final class ObdSource implements Runnable {
     private final Object wake = new Object();
     private final VehicleData snap = new VehicleData();
     private final boolean[] has = new boolean[256];
-    private final int[] misses = new int[256];
+    private final PidScheduler sched = new PidScheduler();
+    private String engineTx, engineRx;
     private final ArrayDeque<String> logLines = new ArrayDeque<>();
     private final SimpleDateFormat stamp = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
 
@@ -194,7 +195,8 @@ public final class ObdSource implements Runnable {
         if (!running) return;
 
         java.util.Arrays.fill(has, false);
-        java.util.Arrays.fill(misses, 0);
+        engineTx = null;
+        engineRx = null;
         boolean more = ObdParse.supported(r, 0x00, has);
         for (int base = 0x20; more && base <= 0xA0; base += 0x20) more = ObdParse.supported(safe(elm, String.format(Locale.US, "01%02X", base), 2000), base, has);
         int n = 0;
@@ -206,9 +208,46 @@ public final class ObdSource implements Runnable {
         log("protocol " + protocol + ", " + n + " PIDs, VIN " + (vin.isEmpty() ? "not reported" : vin));
         String t = safe(elm, "010D1", 1000);
         elm.countSuffix = ObdParse.modeResponse(t, 1, 0x0D) != null;
+        sched.reset(has, 0x0C, 0x0D);
+        // The adapter returns as soon as the one expected reply arrives, so a patient timeout costs nothing
+        // and stops "NO DATA" when the engine computer is slow to answer (it is busiest under boost).
+        if (elm.countSuffix) { safe(elm, "ATAT0", 1000); safe(elm, "ATST32", 1000); }
+        else safe(elm, "ATAT1", 1000);
+        if (protocol.contains("CAN 11")) directToEngine(elm);
         EventLog.add("obd: live, " + protocol.toLowerCase(Locale.US) + ", " + n + " pids");
         setState(LIVE, "");
         poll(elm);
+    }
+
+    /** Sends readings to the engine computer only (for example 7E0) so the gearbox and other modules stay quiet. */
+    private void directToEngine(Elm327 elm) {
+        safe(elm, "ATH1", 1000);
+        String rx = ObdParse.engineHeader(safe(elm, "010C", 2000));
+        safe(elm, "ATH0", 1000);
+        if (rx == null) { log("could not tell which module is the engine, asking all modules"); return; }
+        String tx = ObdParse.requestHeader(rx);
+        safe(elm, "ATSH" + tx, 1000);
+        safe(elm, "ATCRA" + rx, 1000);
+        String test = safe(elm, "010C" + (elm.countSuffix ? "1" : ""), 1500);
+        if (ObdParse.modeResponse(test, 1, 0x0C) != null) {
+            engineTx = tx;
+            engineRx = rx;
+            log("asking the engine directly (" + tx + ", answers from " + rx + ")");
+        } else {
+            toAllModules(elm);
+            log("direct engine requests got no answer, asking all modules");
+        }
+    }
+
+    private void toAllModules(Elm327 elm) {
+        safe(elm, "ATSH7DF", 1000);
+        safe(elm, "ATAR", 1000);
+    }
+
+    private void backToEngine(Elm327 elm) {
+        if (engineTx == null) return;
+        safe(elm, "ATSH" + engineTx, 1000);
+        safe(elm, "ATCRA" + engineRx, 1000);
     }
 
     private void poll(Elm327 elm) throws Exception {
@@ -216,15 +255,17 @@ public final class ObdSource implements Runnable {
         long rateStart = SystemClock.elapsedRealtime(), lastVolt = 0;
         while (running) {
             runJobs(elm);
+            long now = SystemClock.elapsedRealtime();
             for (int pid : FAST) {
-                if (!has[pid]) continue;
+                if (!sched.due(pid, now)) continue;
                 if (!read(elm, pid)) errors++; else { errors = 0; frames++; }
             }
+            now = SystemClock.elapsedRealtime();
             for (int k = 0; k < SLOW.length; k++) {
                 int pid = SLOW[(slowIdx + k) % SLOW.length];
-                if (has[pid]) { slowIdx = (slowIdx + k + 1) % SLOW.length; if (read(elm, pid)) frames++; break; }
+                if (sched.due(pid, now)) { slowIdx = (slowIdx + k + 1) % SLOW.length; if (read(elm, pid)) frames++; break; }
             }
-            long now = SystemClock.elapsedRealtime();
+            now = SystemClock.elapsedRealtime();
             if (!has[0x42] && now - lastVolt > 5000) {
                 lastVolt = now;
                 float vv = ObdParse.volts(safe(elm, "ATRV", 800));
@@ -245,12 +286,36 @@ public final class ObdSource implements Runnable {
         String r = elm.cmd(String.format(Locale.US, "01%02X%s", pid, elm.countSuffix ? "1" : ""), 1500);
         int[] d = ObdParse.modeResponse(r, 1, pid);
         if (d == null) {
-            if (++misses[pid] > 6 && pid != 0x0C && pid != 0x0D) { has[pid] = false; log("dropping PID " + Integer.toHexString(pid) + ": no answers"); }
+            long rest = sched.miss(pid, SystemClock.elapsedRealtime());
+            if (rest > 0) {
+                markStale(pid);
+                log(String.format(Locale.US, "PID %02X quiet, last reply \"%s\", asking again in %d s", pid, r.replace('\n', ' ').trim(), rest / 1000));
+            }
             return !ObdParse.noCar(r);
         }
-        misses[pid] = 0;
+        if (sched.hit(pid)) log(String.format(Locale.US, "PID %02X answering again", pid));
         decode(pid, d);
         return true;
+    }
+
+    /** Shows "--" for a reading the car stopped answering, instead of freezing on its last value. */
+    private void markStale(int pid) {
+        synchronized (snap) {
+            switch (pid) {
+                case 0x0B: snap.boostKpa = Float.NaN; break;
+                case 0x11: snap.throttle = Float.NaN; break;
+                case 0x10: snap.mafGs = Float.NaN; break;
+                case 0x04: snap.load = Float.NaN; break;
+                case 0x05: snap.coolantC = Float.NaN; break;
+                case 0x0F: snap.iatC = Float.NaN; break;
+                case 0x5C: snap.oilC = Float.NaN; break;
+                case 0x46: snap.ambientC = Float.NaN; break;
+                case 0x5E: fuelRatePid = Float.NaN; break;
+                case 0x62: torquePct = Float.NaN; break;
+                case 0x63: torqueRef = Float.NaN; break;
+                default: break;
+            }
+        }
     }
 
     private void decode(int pid, int[] d) {
@@ -305,6 +370,7 @@ public final class ObdSource implements Runnable {
             boolean headers = (Boolean) job[1];
             final Callback cb = (Callback) job[2];
             final StringBuilder out = new StringBuilder();
+            toAllModules(elm);
             try {
                 if (headers) elm.cmd("ATH1", 1000);
                 for (String c : cmds) {
@@ -316,6 +382,7 @@ public final class ObdSource implements Runnable {
                 out.append("error: ").append(e.getMessage()).append('\n');
             } finally {
                 if (headers) safe(elm, "ATH0", 1000);
+                backToEngine(elm);
             }
             main.post(new Runnable() { public void run() { cb.done(out.toString()); } });
         }
@@ -336,7 +403,11 @@ public final class ObdSource implements Runnable {
             UsbManager um = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
             if (um == null) throw new WaitException("This tablet has no USB host support");
             UsbDevice found = null;
-            for (UsbDevice d : um.getDeviceList().values()) if (UsbSerial.supported(d)) { found = d; break; }
+            int best = 0;
+            for (UsbDevice d : um.getDeviceList().values()) {
+                int r = UsbSerial.rank(d);
+                if (r > best) { best = r; found = d; }
+            }
             if (found == null) throw new WaitException("Plug the USB adapter into the tablet (USB-C OTG adapter) and into the car");
             if (!um.hasPermission(found)) {
                 Intent i = new Intent(ACTION_USB_PERMISSION).setPackage(ctx.getPackageName());

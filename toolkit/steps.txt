@@ -1,8 +1,12 @@
-# Next round: check the Lenovo after its restart (plug it in by USB first)
+# Round: install 0.4.1 (OBD2 readings no longer drop out) on the onn, check the Lenovo if it is plugged in
+DEVICE wifi
+INSTALL
+SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 0
+SAVE t1-version dumpsys package dev.kelton.drehzahl | grep -E 'versionName|versionCode'
 DEVICE 0123456789ABCDEF
+INSTALL
 SHELL am start -n dev.kelton.drehzahl/.MainActivity --ei open 1 --ei page 4
 WAIT 8
 SHOT t2-after-restart
 SAVE t2-bt dumpsys bluetooth_manager | grep -iE 'Profile:|Sink|A2DP'
-SAVE t2-overlay cmd overlay list | grep -i -B1 -A1 bluetooth
 RSAVE t2-module ls -lRZ /data/adb/modules/drehzahl_btsink

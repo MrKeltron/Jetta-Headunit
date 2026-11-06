@@ -26,6 +26,7 @@ public class SparkView extends View {
     }
 
     public void push(float v) {
+        if (Float.isNaN(v)) return;
         buf[head] = v;
         head = (head + 1) % buf.length;
         count = Math.min(count + 1, buf.length);

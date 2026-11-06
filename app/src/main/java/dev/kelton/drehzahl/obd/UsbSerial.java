@@ -26,15 +26,25 @@ public abstract class UsbSerial implements Link {
 
     UsbSerial(UsbDevice d) { device = d; }
 
-    /** True when this looks like a serial adapter Drehzahl can drive. */
-    public static boolean supported(UsbDevice d) {
+    /**
+     * How likely this device is an OBD2 adapter: 2 for FTDI, CH34x and CP210x serial chips, 1 for a standard
+     * CDC-ACM serial port, 0 for anything else. USB network adapters (CDC-ECM/NCM, common in USB-C hubs)
+     * also have a CDC data interface, so the ACM subclass is required.
+     */
+    public static int rank(UsbDevice d) {
         int v = d.getVendorId();
-        if (v == VID_FTDI || v == VID_CH34X || v == VID_CP210X) return true;
+        if (v == VID_FTDI || v == VID_CH34X || v == VID_CP210X) return 2;
+        boolean acm = false, data = false;
         for (int i = 0; i < d.getInterfaceCount(); i++) {
-            if (d.getInterface(i).getInterfaceClass() == UsbConstants.USB_CLASS_CDC_DATA) return true;
+            UsbInterface ui = d.getInterface(i);
+            if (ui.getInterfaceClass() == UsbConstants.USB_CLASS_COMM && ui.getInterfaceSubclass() == 2) acm = true;
+            if (ui.getInterfaceClass() == UsbConstants.USB_CLASS_CDC_DATA) data = true;
         }
-        return false;
+        return acm && data ? 1 : 0;
     }
+
+    /** True when this looks like a serial adapter Drehzahl can drive. */
+    public static boolean supported(UsbDevice d) { return rank(d) > 0; }
 
     public static UsbSerial open(UsbManager um, UsbDevice d, int baud) throws IOException {
         UsbSerial s;

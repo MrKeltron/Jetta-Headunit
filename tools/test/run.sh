@@ -4,6 +4,7 @@ set -e
 cd "$(dirname "$0")"
 SRC=../../app/src/main/java/dev/kelton/drehzahl/obd
 rm -rf out && mkdir out
-javac -d out $SRC/Link.java $SRC/ObdParse.java $SRC/Elm327.java FakeElm.java ParseTest.java ElmTest.java
+javac -d out $SRC/Link.java $SRC/ObdParse.java $SRC/Elm327.java $SRC/PidScheduler.java FakeElm.java ParseTest.java ElmTest.java SchedulerTest.java
 java -cp out ParseTest
 java -cp out ElmTest
+java -cp out dev.kelton.drehzahl.obd.SchedulerTest

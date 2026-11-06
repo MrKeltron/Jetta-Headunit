@@ -58,6 +58,26 @@ public final class ObdParse {
         return null;
     }
 
+    /**
+     * Finds the engine computer in an 11-bit CAN reply to 010C read with headers on (ATH1 ATS0),
+     * for example "7E804410C0BB8" gives "7E8". Returns null when no module answered with engine speed.
+     */
+    public static String engineHeader(String resp) {
+        if (resp == null) return null;
+        for (String raw : resp.split("[\\r\\n]+")) {
+            String l = raw.trim().replace(" ", "").toUpperCase(Locale.US);
+            if (l.length() < 9 || !l.matches("^[0-9A-F]+$")) continue;
+            if (l.startsWith("410C", 5) && l.charAt(0) == '7') return l.substring(0, 3);
+        }
+        return null;
+    }
+
+    /** The request address that goes with a reply address on 11-bit CAN: 7E8 answers requests sent to 7E0. */
+    public static String requestHeader(String replyHeader) {
+        int rx = Integer.parseInt(replyHeader, 16);
+        return String.format(Locale.US, "%03X", rx - 8);
+    }
+
     /** Fills supported[] from a 0100 / 0120 / 0140... reply. Returns true if the next range is also supported. */
     public static boolean supported(String resp, int base, boolean[] supported) {
         int[] d = modeResponse(resp, 1, base);

@@ -39,6 +39,12 @@ public class ParseTest {
         eq("protocol", ObdParse.protocolName("A6"), "ISO 15765-4 CAN 11 bit 500k");
         eq("no car", ObdParse.noCar("SEARCHING...\nUNABLE TO CONNECT"), true);
         eq("car ok", ObdParse.noCar("410C1AF8"), false);
+        eq("engine header", ObdParse.engineHeader("7E804410C1AF8"), "7E8");
+        eq("engine header after gearbox refusal", ObdParse.engineHeader("7E9037F0112\r7E804410C1AF8"), "7E8");
+        eq("engine header with spaces", ObdParse.engineHeader("7E8 04 41 0C 1A F8"), "7E8");
+        eq("engine header without headers", ObdParse.engineHeader("410C1AF8"), null);
+        eq("engine header no data", ObdParse.engineHeader("NO DATA"), null);
+        eq("request header", ObdParse.requestHeader("7E8") + " " + ObdParse.requestHeader("7E9"), "7E0 7E1");
         System.out.println(fails == 0 ? "ALL PASS" : fails + " FAILED");
     }
 }
