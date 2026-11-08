@@ -405,10 +405,23 @@ public class MainActivity extends Activity implements SensorEventListener {
             any = true;
         }
         if (i.hasExtra("open")) { go(i.getIntExtra("open", 0), i.getIntExtra("page", 0)); any = true; }
+        if (i.getBooleanExtra("save_settings", false)) {
+            dev.kelton.drehzahl.screens.SettingsScreen.saveSettings(this, Prefs.backupFile(this));
+            any = true;
+        }
+        if (i.getBooleanExtra("load_settings", false)) {
+            if (dev.kelton.drehzahl.screens.SettingsScreen.loadSettings(this, Prefs.backupFile(this))) {
+                CoreService.refresh(this);
+                i.removeExtra("load_settings");
+                themeModeChanged();
+                return true;
+            }
+            any = true;
+        }
         if (i.hasExtra("power_follow")) { Prefs.put(Prefs.POWER_FOLLOW, i.getBooleanExtra("power_follow", false)); any = true; }
         if (i.getBooleanExtra("wake", false)) wakeUp();
         if (i.getBooleanExtra("intro", false)) { playIntro(); any = true; }
-        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro"); i.removeExtra("wake"); i.removeExtra("power_follow");
+        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro"); i.removeExtra("wake"); i.removeExtra("power_follow"); i.removeExtra("save_settings"); i.removeExtra("load_settings");
         return any;
     }
 

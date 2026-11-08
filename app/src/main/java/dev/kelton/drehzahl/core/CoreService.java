@@ -78,6 +78,7 @@ public class CoreService extends Service {
         watcher = new SessionWatcher(this);
         watcher.start();
         PowerFollow.get(this).start();
+        WifiGuard.get(this).start();
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -117,6 +118,7 @@ public class CoreService extends Service {
         try { unregisterReceiver(receiver); } catch (RuntimeException ignored) { }
         if (watcher != null) watcher.stop();
         PowerFollow.get(this).stop();
+        WifiGuard.get(this).stop();
         if (holding) { VehicleHub.get(this).removeListener(speedVolume); VehicleHub.get(this).hold(false); }
         super.onDestroy();
     }

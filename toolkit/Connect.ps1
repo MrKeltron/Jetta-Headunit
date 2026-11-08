@@ -120,8 +120,12 @@ function Connect-Tablet {
     $port = $s['TabletPort']
     $Script:NeedsPairing = $false
 
-    foreach ($d in Get-ConnectedDevices) {
+    $ready = @(Get-ConnectedDevices)
+    foreach ($d in $ready) {
         if ($ip -and $d -like ($ip + ':*')) { $Script:Serial = $d; Say ('Already connected: ' + $d) Green; return $true }
+    }
+    foreach ($d in $ready) {
+        if ($d -match '_adb-tls-connect') { $Script:Serial = $d; Say ('Already connected through the network name: ' + $d) Green; return $true }
     }
 
     for ($attempt = 1; $attempt -le 2; $attempt++) {

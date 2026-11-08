@@ -10,3 +10,5 @@ apk/
 *.iml
 .DS_Store
 tools/test/out/
+backup/
+toolkit/root/

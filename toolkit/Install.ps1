@@ -59,6 +59,7 @@ function Install-Drehzahl {
     $cmds = @(
         ('cmd notification allow_listener ' + $pkg + '/' + $pkg + '.media.MediaListener'),
         ('pm grant ' + $pkg + ' android.permission.DUMP'),
+        ('pm grant ' + $pkg + ' android.permission.NEARBY_WIFI_DEVICES'),
         ('pm grant ' + $pkg + ' android.permission.WRITE_SECURE_SETTINGS'),
         ('appops set ' + $pkg + ' WRITE_SETTINGS allow'),
         ('appops set ' + $pkg + ' RUN_ANY_IN_BACKGROUND allow'),

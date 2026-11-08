@@ -41,6 +41,8 @@ fonts or logos are used.
 | Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
 | OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers), classic Bluetooth, or Bluetooth LE (no pairing; finds the adapter's data channel by itself). Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
 | Follow car power | Optional: screen off a set time after the car's power goes away (the wait covers engine cranking), music paused; when power returns the screen wakes, the startup animation plays and the home screen opens. Uses a device admin with only the lock-screen policy. With a PIN or pattern set, the tablet wakes to its lock screen |
+| Wi-Fi guard (root) | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. A saved flag undoes a pause that was cut short, and Android resets auto-join at restart. Settings > CarPlay |
+| Settings backup | Settings > Reset: save every Drehzahl setting to a file and load it again, for example before resetting or rooting the tablet |
 | Screens | Drawn for 1280 x 800 dp. Smaller tablets (for example 800 x 1280 at 240 dpi) shrink the whole layout to fit instead of cutting it off |
 | Settings | Day/night/auto (light sensor), accent color, brightness, hide system bars, keep screen on, time and date, units, icon pack, connections, tablet info, terms, credits, reset |
 | Apps | App drawer with icon pack support (any pack using the standard appfilter.xml, such as OnePro Dark) |
@@ -61,8 +63,14 @@ mixer reports no underruns and the effects use about a fifth of the time availab
 Fix, in CarLink: Settings > Show advanced (on) > Sound & voice > Music buffer > Long (1 s), and Buffered music on.
 Then disconnect and reconnect CarPlay. The PC toolkit can do this for you (see `toolkit/steps.txt` examples).
 
+That made home tests better but drives still stuttered. The second cause: away from a known Wi-Fi network, Android searches
+for one about every 20 s, and a single Wi-Fi radio has to leave the CarPlay channel for every search. Opening the tablet's
+Wi-Fi settings (which searches on purpose) makes CarPlay stutter on cue. On a rooted tablet Drehzahl's Wi-Fi guard pauses
+those searches while a phone is on the link (Settings > CarPlay). Android gives ordinary apps no way to stop them, so
+without root this part cannot be fixed by an app.
+
 If the tablet also joins a Wi-Fi network in the car (a phone hotspot, for example), keep that network on the same channel
-as CarPlay or switch Wi-Fi client off; a single Wi-Fi radio has to leave the CarPlay channel for every scan or other channel.
+as CarPlay; a single Wi-Fi radio has to switch channels for every packet otherwise.
 
 ## Repository layout
 

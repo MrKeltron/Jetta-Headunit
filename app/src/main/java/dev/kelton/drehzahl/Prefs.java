@@ -55,6 +55,8 @@ public final class Prefs {
     public static final String SPEED_VOL = "speed_vol";    // 0 off .. 3 high
     public static final String START_VOL = "start_vol";    // max switch-on volume, percent
     public static final String POWER_FOLLOW = "power_follow"; // screen off without power, intro and home when it returns
+    public static final String WIFI_GUARD = "wifi_guard";     // pause Wi-Fi network search during wireless CarPlay (root)
+    public static final String WIFI_GUARD_PAUSED = "wifi_guard_paused"; // set before a pause, cleared once the search is back on
     public static final String POWER_WAIT = "power_wait";     // seconds to wait before the screen turns off
     public static final String POWER_PAUSE = "power_pause";   // pause music when power is lost
     public static final String BT_MODULE = "bt_module";    // Drehzahl's Bluetooth receiver module is installed
@@ -92,4 +94,66 @@ public final class Prefs {
     public static void put(String k, String v) { sp.edit().putString(k, v).apply(); }
 
     public static void resetAll() { sp.edit().clear().apply(); }
+
+    /** Writes every setting to a text file, one per line: type, key, value (values URL-encoded). */
+    public static int export(java.io.File f) throws java.io.IOException {
+        StringBuilder out = new StringBuilder("# Drehzahl settings\n");
+        int n = 0;
+        for (java.util.Map.Entry<String, ?> e : new java.util.TreeMap<>(sp.getAll()).entrySet()) {
+            Object v = e.getValue();
+            String t;
+            if (v instanceof Integer) t = "i";
+            else if (v instanceof Boolean) t = "b";
+            else if (v instanceof Float) t = "f";
+            else if (v instanceof Long) t = "l";
+            else if (v instanceof String) t = "s";
+            else continue;
+            out.append(t).append('\t').append(enc(e.getKey())).append('\t').append(enc(String.valueOf(v))).append('\n');
+            n++;
+        }
+        java.io.File dir = f.getParentFile();
+        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) throw new java.io.IOException("cannot make " + dir);
+        try (java.io.OutputStream o = new java.io.FileOutputStream(f)) { o.write(out.toString().getBytes("UTF-8")); }
+        return n;
+    }
+
+    /** Reads a file written by export. Settings not in the file are left as they are. */
+    public static int restore(java.io.File f) throws java.io.IOException {
+        SharedPreferences.Editor ed = sp.edit();
+        int n = 0;
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"))) {
+            for (String line; (line = r.readLine()) != null; ) {
+                if (line.isEmpty() || line.startsWith("#")) continue;
+                String[] p = line.split("\t", 3);
+                if (p.length < 3) continue;
+                String k = dec(p[1]), v = dec(p[2]);
+                try {
+                    switch (p[0]) {
+                        case "i": ed.putInt(k, Integer.parseInt(v)); break;
+                        case "b": ed.putBoolean(k, Boolean.parseBoolean(v)); break;
+                        case "f": ed.putFloat(k, Float.parseFloat(v)); break;
+                        case "l": ed.putLong(k, Long.parseLong(v)); break;
+                        case "s": ed.putString(k, v); break;
+                        default: continue;
+                    }
+                    n++;
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        ed.commit();
+        return n;
+    }
+
+    private static String enc(String s) {
+        try { return java.net.URLEncoder.encode(s, "UTF-8"); } catch (java.io.UnsupportedEncodingException e) { return s; }
+    }
+
+    private static String dec(String s) {
+        try { return java.net.URLDecoder.decode(s, "UTF-8"); } catch (Exception e) { return s; }
+    }
+
+    public static java.io.File backupFile(Context c) {
+        java.io.File d = c.getExternalFilesDir(null);
+        return new java.io.File(d != null ? d : c.getFilesDir(), "settings.txt");
+    }
 }

@@ -226,6 +226,19 @@ public class SettingsScreen extends SplitScreen {
         p.addView(W.toggleRow(c, "Open when the tablet starts", null, Prefs.b(Prefs.BOOT_CP, false), new Controls.BoolCb() {
             public void on(boolean x) { Prefs.put(Prefs.BOOT_CP, x); }
         }));
+        p.addView(W.toggleRow(c, "Pause Wi-Fi search during wireless CarPlay", "Stops music dropping out. Needs root.",
+                dev.kelton.drehzahl.core.WifiGuard.enabled(), new Controls.BoolCb() {
+            public void on(boolean x) {
+                Prefs.put(Prefs.WIFI_GUARD, x);
+                if (x && Build.VERSION.SDK_INT >= 33 && !dev.kelton.drehzahl.sys.Root.present()
+                        && host.checkSelfPermission("android.permission.NEARBY_WIFI_DEVICES") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    host.requestPermissions(new String[] { "android.permission.NEARBY_WIFI_DEVICES" }, 41);
+                }
+                dev.kelton.drehzahl.core.WifiGuard.get(host).settingChanged();
+                refreshPage();
+            }
+        }));
+        p.addView(W.note(c, dev.kelton.drehzahl.core.WifiGuard.get(c).describe()));
         p.addView(W.chevronRow(c, "Open CarPlay", null, new View.OnClickListener() {
             public void onClick(View x) { if (!CarLink.launch(host)) W.toast(host, "CarLink is not installed"); }
         }));
@@ -314,6 +327,23 @@ public class SettingsScreen extends SplitScreen {
 
     // ---- Reset ----
     private void reset(Context c, LinearLayout p) {
+        final java.io.File f = Prefs.backupFile(c);
+        p.addView(W.note(c, "Save every Drehzahl setting to a file before resetting the tablet, and load it again afterwards. "
+                + "File: " + f.getAbsolutePath() + (f.isFile() ? " (saved " + java.text.DateFormat.getDateTimeInstance().format(new java.util.Date(f.lastModified())) + ")" : " (not saved yet)")));
+        LinearLayout row = new LinearLayout(c);
+        row.addView(W.button(c, "Save settings to the file", false, new View.OnClickListener() {
+            public void onClick(View v) { saveSettings(host, f); refreshPage(); }
+        }), W.lp(W.WRAP, W.WRAP));
+        if (f.isFile()) {
+            row.addView(W.button(c, "Load settings from the file", false, new View.OnClickListener() {
+                public void onClick(View v) {
+                    W.confirm(host, "Load settings", "Settings in the file replace the current ones.", new Runnable() {
+                        public void run() { loadSettings(host, f); host.themeModeChanged(); }
+                    });
+                }
+            }), W.lp(W.WRAP, W.WRAP));
+        }
+        p.addView(row, W.lp(W.MATCH, W.WRAP));
         p.addView(W.note(c, "Puts every Drehzahl setting back to default: sound, units, gauges, trip memories, service data and display. "
                 + "Apps, CarLink and the tablet's own settings are not touched."));
         p.addView(W.button(c, "Reset Drehzahl settings", true, new View.OnClickListener() {
@@ -323,5 +353,29 @@ public class SettingsScreen extends SplitScreen {
                 });
             }
         }), W.lp(W.WRAP, W.WRAP));
+    }
+
+    public static void saveSettings(Context c, java.io.File f) {
+        try {
+            int n = Prefs.export(f);
+            dev.kelton.drehzahl.core.EventLog.add("settings: saved " + n + " to " + f.getAbsolutePath());
+            W.toast(c, "Saved " + n + " settings");
+        } catch (java.io.IOException e) {
+            dev.kelton.drehzahl.core.EventLog.add("settings: save failed, " + e.getMessage());
+            W.toast(c, "Could not save: " + e.getMessage());
+        }
+    }
+
+    public static boolean loadSettings(Context c, java.io.File f) {
+        try {
+            int n = Prefs.restore(f);
+            dev.kelton.drehzahl.core.EventLog.add("settings: loaded " + n + " from " + f.getAbsolutePath());
+            W.toast(c, "Loaded " + n + " settings");
+            return true;
+        } catch (java.io.IOException e) {
+            dev.kelton.drehzahl.core.EventLog.add("settings: load failed, " + e.getMessage());
+            W.toast(c, "Could not load: " + e.getMessage());
+            return false;
+        }
     }
 }

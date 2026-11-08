@@ -31,7 +31,10 @@ final class Legal {
           "On a rooted tablet Drehzahl can add a small module (\"Drehzahl Bluetooth receiver\") that changes how Android's Bluetooth "
           + "works so phones can play music to the tablet. It only runs when you switch it on and confirm the root prompt, and it can "
           + "be switched off on the same page. On Android 12 and older it stops the tablet from sending sound to Bluetooth headphones "
-          + "while it is on. Root access bypasses Android's normal protections; you use it at your own risk." },
+          + "while it is on. With \"Pause Wi-Fi search during wireless CarPlay\" on, Drehzahl also switches off Android's automatic "
+          + "joining of Wi-Fi networks while a phone is connected over Wi-Fi Direct, and switches it back on when the phone leaves; "
+          + "in that time the tablet does not join known networks by itself. Root access bypasses Android's normal protections; "
+          + "you use it at your own risk." },
         { "Other apps and services",
           "CarPlay runs in CarLink, a separate app with its own license (AGPL-3.0) and its own terms. Drehzahl only opens it. Music, "
           + "maps and other apps you launch from Drehzahl are covered by their own terms." },
@@ -73,13 +76,16 @@ final class Legal {
           + "Font files and license texts come from the Fontsource packages; the licenses are in the fonts folder of the source code" },
         { "Optional add-ons",
           "OnePro (Dark) icon pack by Eatos, sold separately on Google Play\n"
-          + "The Bluetooth receiver module works with the root tools Magisk, KernelSU and APatch (installed separately)" },
+          + "Root features (Bluetooth receiver, Wi-Fi search pause) work with the root tools Magisk, KernelSU and APatch (installed separately)\n"
+          + "mtkclient by Bjoern Kerler (GPL-3.0), used separately to back up and root the onn tablet (see docs/ROOTING.md)" },
         { "References",
           "Android audio effects documentation (DynamicsProcessing, Equalizer, BassBoost, Virtualizer, LoudnessEnhancer, PresetReverb)\n"
           + "Icon pack appfilter.xml format used by third-party Android launchers\n"
           + "Android Bluetooth source (AOSP): the A2DP sink and AVRCP controller roles and the settings that switch them on\n"
           + "Magisk module format (module.prop, system.prop, system folder overlays)\n"
           + "CarLink's own audio statistics and notes on Wi-Fi gaps, used to find the CarPlay audio dropouts\n"
+          + "DiPlay's notes on head units searching for Wi-Fi networks during Wi-Fi Direct CarPlay, which pointed to the network search\n"
+          + "Android Wi-Fi source (AOSP): auto-join and the periodic connectivity scan\n"
           + "ELM327 datasheet (Elm Electronics): commands, timeouts and CAN header settings\n"
           + "Published Bluetooth LE service layouts of common OBD2 adapters (Vgate, Veepeak, HM-10 style modules)" },
         { "License", "Drehzahl is released under the MIT License. The full text is in the LICENSE file of the source code." },
