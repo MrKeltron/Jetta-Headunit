@@ -40,8 +40,11 @@ fonts or logos are used.
 | Sound | 10-band EQ with presets, treble/mid/bass, balance and fader pad, sound focus, bass boost, surround, loudness, 3-band compressor, limiter, reverb, max switch-on volume, speed-dependent volume |
 | Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
 | OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers), classic Bluetooth, or Bluetooth LE (no pairing; finds the adapter's data channel by itself). Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
+| Pull recorder | Car > Pull recorder. Records every full-throttle pull from the OBD2 adapter (boost, rpm, pedal, throttle asked and actual, timing, fuel rail pressure, commanded and measured lambda), from 5 s before the pedal goes down until the lift, asking up to 6 readings per request when the car allows it. Flags torque cuts (the ECU closing the throttle with the pedal down, felt as a buck) and says what led up to them, timing pulled below zero, rail pressure sag, running lean, and RPM flares without speed (DSG clutch slip). Chart with touch readout; each pull is also saved as a CSV |
+| Adapter console | Commands joined with ; run as one block with the gauges paused, so header and filter settings hold for the whole block; the adapter is put back to normal afterwards |
 | Follow car power | Optional: screen off a set time after the car's power goes away (the wait covers engine cranking), music paused; when power returns the screen wakes, the startup animation plays and the home screen opens. Uses a device admin with only the lock-screen policy. With a PIN or pattern set, the tablet wakes to its lock screen |
 | Wi-Fi guard (root) | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. A saved flag undoes a pause that was cut short, and Android resets auto-join at restart. Settings > CarPlay |
+| Dock mode (root) | Charge from a powered USB-C dock and run wired CarPlay through it at the same time. Docks without USB-PD give the tablet plain 5 V, and Android then can't be charging and USB host together: the tablet either charges and can't see the phone, or sees the phone and powers the dock and phone from its own battery (about 2 A, even with the car off). A small root module asks the USB-C port to take power only and, every time power arrives, restarts the USB controller in host mode, so the dock's hub and the phone show up while the tablet charges and CarPlay starts by itself. If nothing answers on USB (a charger or a computer) USB is left as normal. Not solved yet: when the dock loses power the tablet still switches to powering it. Settings > Connections |
 | Settings backup | Settings > Reset: save every Drehzahl setting to a file and load it again, for example before resetting or rooting the tablet |
 | Screens | Drawn for 1280 x 800 dp. Smaller tablets (for example 800 x 1280 at 240 dpi) shrink the whole layout to fit instead of cutting it off |
 | Settings | Day/night/auto (light sensor), accent color, brightness, hide system bars, keep screen on, time and date, units, icon pack, connections, tablet info, terms, credits, reset |
@@ -71,6 +74,39 @@ without root this part cannot be fixed by an app.
 
 If the tablet also joins a Wi-Fi network in the car (a phone hotspot, for example), keep that network on the same channel
 as CarPlay; a single Wi-Fi radio has to switch channels for every packet otherwise.
+
+## Charging through a USB-C dock
+
+A USB-C dock or hub with power pass-through normally needs USB-PD to charge a tablet and be its USB host at the same time:
+the dock sends power, and a PD message swaps the data direction so the tablet is host. The Razer USB-C dock tested here
+gives the tablet only plain 5 V without PD, in both directions. So without help:
+
+- dock powered first: the tablet charges, but stays a USB device and never sees the phone on the dock
+- tablet plugged in first (car off): the tablet becomes the power source and USB host, so CarPlay works, but it feeds the
+  dock and the phone from its own battery (measured about 2 A) and the dock ignores its own charger
+
+On this MediaTek tablet the USB controller has its own role switch (`/sys/class/usb_role/mt_usb-role-switch`), separate
+from the USB-C power role. Dock mode (Settings > Connections, root) switches the controller off and then to host each time
+power arrives. Switching straight from device to host enumerated the phone but the iPhone never answered CarPlay's vendor
+requests (`USBDEVFS_CONTROL ... ret -110`); off, then host, works. Measured on the bench: dock power back on, tablet charging
+in about 5 s, USB host with the hub and iPhone about 20 s later, CarPlay picture 1.6 s after that.
+
+Dock mode also writes `sink` to `/sys/class/typec/port0/port_type`, and takes that file away from Android's USB service
+(`android.hardware.usb-aidl-service.mediatek`, which resets it to `dual` on every unplug). That makes the tablet come back
+as the sink when the dock regains power. It does not stop the tablet from switching to source when the dock loses power:
+the MediaTek Type-C driver goes straight from sink to source there, without the detach where the setting would apply. With
+the car off, the tablet feeds the dock (and a phone left on it); measured 1 to 2 A with the screen on.
+
+MediaTek's own role file, `/sys/class/tcpc/type_c_port0/typec_role` (1 sink only, 3 dual, 5 try sink as shipped), does
+apply immediately: writing 1 stopped the tablet feeding the dock without an unplug. But the Razer dock then never supplied
+power either, even after a fresh charger power-up, so the tablet got nothing. The dock seems to pick its role only while
+it is being powered by the tablet. Dock mode therefore leaves that file at the shipped value.
+
+The dock still only allows 0.5 A at 5 V without PD, which roughly holds the battery level with CarPlay on screen rather
+than filling it. A dock or hub that does USB-PD with the tablet, or one that only ever supplies power upstream, would
+avoid all of this; dock mode already handles the USB host side.
+
+Do not read the files under `/sys/class/tcpc/` on this tablet: reading some of them crashes the kernel and restarts it.
 
 ## Repository layout
 

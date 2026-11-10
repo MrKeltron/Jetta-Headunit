@@ -33,7 +33,9 @@ final class Legal {
           + "be switched off on the same page. On Android 12 and older it stops the tablet from sending sound to Bluetooth headphones "
           + "while it is on. With \"Pause Wi-Fi search during wireless CarPlay\" on, Drehzahl also switches off Android's automatic "
           + "joining of Wi-Fi networks while a phone is connected over Wi-Fi Direct, and switches it back on when the phone leaves; "
-          + "in that time the tablet does not join known networks by itself. Root access bypasses Android's normal protections; "
+          + "in that time the tablet does not join known networks by itself. With \"Dock mode\" on, a second module (\"Drehzahl dock mode\") "
+          + "asks the tablet's USB-C port to take power only and switches the tablet's USB to host whenever power arrives. The tablet "
+          + "can still end up powering a dock that has lost power, which drains its battery. Root access bypasses Android's normal protections; "
           + "you use it at your own risk." },
         { "Other apps and services",
           "CarPlay runs in CarLink, a separate app with its own license (AGPL-3.0) and its own terms. Drehzahl only opens it. Music, "
@@ -76,7 +78,7 @@ final class Legal {
           + "Font files and license texts come from the Fontsource packages; the licenses are in the fonts folder of the source code" },
         { "Optional add-ons",
           "OnePro (Dark) icon pack by Eatos, sold separately on Google Play\n"
-          + "Root features (Bluetooth receiver, Wi-Fi search pause) work with the root tools Magisk, KernelSU and APatch (installed separately)\n"
+          + "Root features (Bluetooth receiver, Wi-Fi search pause, dock mode) work with the root tools Magisk, KernelSU and APatch (installed separately)\n"
           + "mtkclient by Bjoern Kerler (GPL-3.0), used separately to back up and root the onn tablet (see docs/ROOTING.md)" },
         { "References",
           "Android audio effects documentation (DynamicsProcessing, Equalizer, BassBoost, Virtualizer, LoudnessEnhancer, PresetReverb)\n"
@@ -87,6 +89,7 @@ final class Legal {
           + "DiPlay's notes on head units searching for Wi-Fi networks during Wi-Fi Direct CarPlay, which pointed to the network search\n"
           + "Android Wi-Fi source (AOSP): auto-join and the periodic connectivity scan\n"
           + "ELM327 datasheet (Elm Electronics): commands, timeouts and CAN header settings\n"
+          + "SAE J1979 / ISO 15765-4: OBD2 readings, several readings per request on CAN, the misfire monitor results (mode 06)\n"
           + "Published Bluetooth LE service layouts of common OBD2 adapters (Vgate, Veepeak, HM-10 style modules)" },
         { "License", "Drehzahl is released under the MIT License. The full text is in the LICENSE file of the source code." },
     };

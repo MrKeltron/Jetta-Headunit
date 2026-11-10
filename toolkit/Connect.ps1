@@ -51,8 +51,60 @@ function Find-OpenPorts {
     return $open
 }
 
+# Connects to a device at a known IP whose wireless debugging port keeps moving.
+# Tries the given port, then 5555, then mDNS, then a full port scan. Does not touch the saved tablet address.
+function Connect-AtIp {
+    param([string]$IP, [string]$Port)
+    if ($Port -and (Try-Connect ($IP + ':' + $Port) -NoSave)) { return $true }
+    if ($Port -ne '5555' -and (Try-Connect ($IP + ':5555') -NoSave)) { return $true }
+    foreach ($x in @(Find-MdnsServices | Where-Object { $_.Kind -eq 'connect' -and $_.IP -eq $IP })) {
+        if (Try-Connect ($x.IP + ':' + $x.Port) -NoSave) { return $true }
+    }
+    Say ('Scanning ' + $IP + ' for its debugging port (about 30 seconds)...')
+    foreach ($p in (Find-OpenPorts -IP $IP)) {
+        if (Try-Connect ($IP + ':' + $p) -NoSave) { return $true }
+    }
+    return $false
+}
+
+# Moves a network device from its wandering wireless debugging port to 5555 until it restarts.
+function Pin-Port5555 {
+    if (-not $Script:Serial -or $Script:Serial -notmatch '^([0-9\.]+):([0-9]+)$') { return 'not a network device' }
+    $ip = $Matches[1]
+    if ($Matches[2] -eq '5555') { return 'already on 5555' }
+    $old = $Script:Serial
+    $t = (Invoke-Adb @('tcpip', '5555')).Text.Trim()
+    Start-Sleep -Seconds 4
+    Invoke-Adb -NoSerial @('disconnect', $old) | Out-Null
+    for ($i = 0; $i -lt 5; $i++) {
+        if (Try-Connect ($ip + ':5555') -NoSave) { return ($t + ' -> now on ' + $ip + ':5555') }
+        Start-Sleep -Seconds 2
+    }
+    if (Connect-AtIp $ip '') { return ($t + ' -> 5555 did not answer, back on ' + $Script:Serial) }
+    $Script:Serial = $null
+    return ($t + ' -> lost the device')
+}
+
+# Rooted tablets keep a fixed debugging port (5555). This knocks on it at every address of the network.
+function Find-Port5555 {
+    param([string]$IP)
+    $base = ($IP.Split('.')[0..2]) -join '.'
+    $jobs = @()
+    for ($i = 1; $i -le 254; $i++) {
+        $c = New-Object System.Net.Sockets.TcpClient
+        $jobs += ,@(($base + '.' + $i), $c, $c.ConnectAsync(($base + '.' + $i), 5555))
+    }
+    Start-Sleep -Milliseconds 1500
+    $found = @()
+    foreach ($j in $jobs) {
+        if ($j[2].Status -eq 'RanToCompletion' -and $j[1].Connected) { $found += $j[0] }
+        try { $j[1].Close() } catch { }
+    }
+    return $found
+}
+
 function Try-Connect {
-    param([string]$Target)
+    param([string]$Target, [switch]$NoSave)
     $r = Invoke-Adb -NoSerial @('connect', $Target)
     $msg = $r.Text.Trim()
     Say ('  adb connect ' + $Target + '  ->  ' + $msg) DarkGray
@@ -61,9 +113,11 @@ function Try-Connect {
         Start-Sleep -Milliseconds 700
         if (Test-Serial $Target) {
             $Script:Serial = $Target
-            $parts = $Target.Split(':')
-            Save-Setting 'TabletIP' $parts[0]
-            Save-Setting 'TabletPort' $parts[1]
+            if (-not $NoSave) {
+                $parts = $Target.Split(':')
+                Save-Setting 'TabletIP' $parts[0]
+                Save-Setting 'TabletPort' $parts[1]
+            }
             return $true
         }
         $Script:NeedsPairing = $true
@@ -134,6 +188,11 @@ function Connect-Tablet {
             if (Try-Connect ($ip + ':' + $port)) { break }
         }
 
+        if ($ip -and $port -ne '5555') {
+            Say ('Trying the fixed port ' + $ip + ':5555')
+            if (Try-Connect ($ip + ':5555')) { break }
+        }
+
         Say 'Looking for the tablet on the network (mDNS)...'
         $svc = @(Find-MdnsServices | Where-Object { $_.Kind -eq 'connect' })
         $ok = $false
@@ -152,7 +211,11 @@ function Connect-Tablet {
                 }
                 if ($ok) { break }
             } else {
-                Say ('Nothing answered at ' + $ip + '. The tablet may have a new IP address.') Yellow
+                Say ('Nothing answered at ' + $ip + '. Looking for the tablet''s fixed port 5555 on this network...') Yellow
+                foreach ($h in (Find-Port5555 $ip)) {
+                    if (Try-Connect ($h + ':5555')) { $ok = $true; break }
+                }
+                if ($ok) { break }
             }
         }
 

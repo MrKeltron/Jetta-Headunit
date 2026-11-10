@@ -30,12 +30,12 @@ import dev.kelton.drehzahl.vehicle.VehicleHub;
 
 /** Car: performance gauges, g-meter, lap timer, trip data, service, driving profile, data source. */
 public class VehicleScreen extends SplitScreen {
-    private static final String[] ITEMS = { "Performance", "G-meter", "Lap timer", "Driving data", "Service", "Driving profile", "Data source", "Trouble codes" };
-    private static final int[] ICONS = { Icons.GAUGE, Icons.GMETER, Icons.TIMER, Icons.TRIP, Icons.SERVICE, Icons.PROFILE, Icons.LINK, Icons.DOC };
+    private static final String[] ITEMS = { "Performance", "G-meter", "Lap timer", "Driving data", "Service", "Driving profile", "Data source", "Trouble codes", "Pull recorder" };
+    private static final int[] ICONS = { Icons.GAUGE, Icons.GMETER, Icons.TIMER, Icons.TRIP, Icons.SERVICE, Icons.PROFILE, Icons.LINK, Icons.DOC, Icons.SPARK };
     private static final String DEFAULT_GAUGES = "boost,oil,coolant,power,latg,iat";
 
-    public static final int[] ALL_PAGES = { 0, 1, 2, 3, 7, 4, 5, 6 };
-    public static final int[] PERF_PAGES = { 0, 1, 2 };
+    public static final int[] ALL_PAGES = { 0, 8, 1, 2, 3, 7, 4, 5, 6 };
+    public static final int[] PERF_PAGES = { 0, 8, 1, 2 };
     public static final int[] CAR_PAGES = { 3, 7, 4, 5, 6 };
     private final int[] pages;
     private final String title;
@@ -76,6 +76,7 @@ public class VehicleScreen extends SplitScreen {
             case 4: service(c, W.page(c, hostView)); break;
             case 5: profile(c, W.page(c, hostView)); break;
             case 7: codes(c, W.page(c, hostView)); break;
+            case 8: pulls(c, W.page(c, hostView)); break;
             default: source(c, W.page(c, hostView));
         }
     }
@@ -454,6 +455,33 @@ public class VehicleScreen extends SplitScreen {
         });
     }
 
+
+    // ---- Pull recorder ----
+    private void pulls(final Context c, LinearLayout p) {
+        p.addView(W.note(c, "Records every full-throttle pull from the OBD2 adapter: boost, rpm, pedal, throttle, timing, fuel rail pressure "
+                + "and air-fuel ratio, from 5 s before the pedal goes down until you lift. While a pull runs Drehzahl asks for these "
+                + "readings as fast as the car answers. Afterwards it looks for the ECU closing the throttle with your foot down (a torque "
+                + "cut, felt as a buck), timing pulled for knock, fuel pressure sagging, running lean, and the DSG clutch slipping."));
+        p.addView(W.toggleRow(c, "Record full-throttle pulls", "Starts at 80% pedal above 1200 rpm", Prefs.b(Prefs.PULLS, true), new Controls.BoolCb() {
+            public void on(boolean x) {
+                Prefs.put(Prefs.PULLS, x);
+                dev.kelton.drehzahl.obd.ObdSource.get(host).pulls.setEnabled(x);
+            }
+        }));
+        String status = dev.kelton.drehzahl.obd.ObdSource.get(host).pullStatus();
+        if (!status.isEmpty()) p.addView(W.note(c, "Last pull: " + status + "."));
+        if (hub().source() != 2) p.addView(W.note(c, "Data source is not the OBD2 adapter, so nothing is recorded."));
+        java.io.File[] list = dev.kelton.drehzahl.obd.PullStore.list(c);
+        p.addView(W.header(c, list.length == 0 ? "No pulls yet" : "Recorded pulls"));
+        java.text.DateFormat df = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT);
+        for (final java.io.File f : list) {
+            java.util.List<String> lines = dev.kelton.drehzahl.obd.PullStore.readable(dev.kelton.drehzahl.obd.PullStore.lines(f));
+            String sub = lines.isEmpty() ? "" : lines.get(0) + (lines.size() > 1 ? "\n" + lines.get(1) : "");
+            p.addView(W.row(c, df.format(dev.kelton.drehzahl.obd.PullStore.when(f)), sub, null, new View.OnClickListener() {
+                public void onClick(View v) { host.push(new PullScreen(f)); }
+            }));
+        }
+    }
 
     // ---- Trouble codes ----
     private void codes(final Context c, final LinearLayout p) {

@@ -1,5 +1,7 @@
 # Drehzahl tablet toolkit: run the steps listed in toolkit\steps.txt, one per line, and save the results.
-#   DEVICE wifi|usb|<serial>   pick the tablet for the following steps (default: wifi).
+#   DEVICE wifi|usb|<serial>|<ip>|<ip:port>  pick the tablet for the following steps (default: wifi).
+#                              With an IP the port is searched for when it has moved.
+#   FIXPORT                    move a network device to the fixed port 5555 until it restarts
 #                              Prefer the serial when more than one tablet is plugged in.
 #   INSTALL                    install the newest Drehzahl APK from the apk folder
 #   APK <file>                 install any APK from the apk folder (wildcards allowed)
@@ -74,6 +76,14 @@ function Select-Device {
             return $false
         }
         if ($wired.Count -eq 1) { $Script:Serial = $wired[0] }
+    } elseif ($w -match '^([0-9]{1,3}(\.[0-9]{1,3}){3})(:([0-9]{2,5}))?$') {
+        $ip = $Matches[1]
+        $port = $Matches[4]
+        $Script:NeedsPairing = $false
+        if (-not (Connect-AtIp $ip $port)) {
+            Out-Log ('Could not connect to ' + $w)
+            if ($Script:NeedsPairing) { Out-Log ('It answered but this PC is not paired with it. Pair once with: adb pair <ip:pairing port> <code>') }
+        }
     } else {
         foreach ($d in $all) { if ($d -eq $Which.Trim()) { $Script:Serial = $d } }
     }
@@ -219,6 +229,7 @@ function Invoke-Step {
         'SAVE' { $p = Split-First $arg; Save-Text $p[0] (Adb-Shell $p[1]) }
         'ROOT' { Out-Log (Root-Shell $arg) }
         'RSAVE' { $p = Split-First $arg; Save-Text $p[0] (Root-Shell $p[1]) }
+        'FIXPORT' { Out-Log ('fixport: ' + (Pin-Port5555)) }
         'PUSH' {
             $p = Split-First $arg
             Out-Log (Invoke-Adb @('push', (Join-Path $Script:Root $p[0]), $p[1])).Text

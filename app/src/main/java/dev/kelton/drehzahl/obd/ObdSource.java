@@ -54,6 +54,12 @@ public final class ObdSource implements Runnable {
     private final Object wake = new Object();
     private final VehicleData snap = new VehicleData();
     private final boolean[] has = new boolean[256];
+    /** Full-throttle pull recorder; ObdSource feeds it every reading and polls faster while a pull runs. */
+    public final PullRecorder pulls = new PullRecorder();
+    private int multiMode = -1; // -1 not tried yet, 0 one reading per request, 1 several with a frame count, 2 several without
+    private int pullReads;
+    private long pullSince;
+    private volatile String pullStatus = "";
     private final PidScheduler sched = new PidScheduler();
     private String engineTx, engineRx;
     private final ArrayDeque<String> logLines = new ArrayDeque<>();
@@ -79,6 +85,10 @@ public final class ObdSource implements Runnable {
     private ObdSource(Context c) {
         ctx = c;
         snap.oilC = Float.NaN;
+        pulls.setEnabled(Prefs.b(Prefs.PULLS, true));
+        pulls.setSink(new PullRecorder.Sink() {
+            public void saved(PullRecorder.Pull p) { PullStore.save(ctx, p); }
+        });
     }
 
     // ---------- control ----------
@@ -196,6 +206,7 @@ public final class ObdSource implements Runnable {
 
         java.util.Arrays.fill(has, false);
         engineTx = null;
+        multiMode = -1;
         engineRx = null;
         boolean more = ObdParse.supported(r, 0x00, has);
         for (int base = 0x20; more && base <= 0xA0; base += 0x20) more = ObdParse.supported(safe(elm, String.format(Locale.US, "01%02X", base), 2000), base, has);
@@ -256,6 +267,22 @@ public final class ObdSource implements Runnable {
         while (running) {
             runJobs(elm);
             long now = SystemClock.elapsedRealtime();
+            if (pulls.active()) {
+                if (pullSince == 0) { pullSince = now; pullReads = 0; }
+                int got = pollPull(elm);
+                frames += got;
+                pullReads += got;
+                if (got == 0) errors++; else errors = 0;
+                derive();
+                if (errors >= 12) throw new IOException("The car stopped answering (ignition off?)");
+                continue;
+            } else if (pullSince != 0) {
+                float secs = (now - pullSince) / 1000f;
+                pullStatus = String.format(Locale.US, "%.1f readings per second in the last pull (%s)", pullReads / Math.max(0.1f, secs),
+                        multiMode > 0 ? "several readings per request" : "one reading per request");
+                log("pull: " + pullStatus);
+                pullSince = 0;
+            }
             for (int pid : FAST) {
                 if (!sched.due(pid, now)) continue;
                 if (!read(elm, pid)) errors++; else { errors = 0; frames++; }
@@ -298,6 +325,55 @@ public final class ObdSource implements Runnable {
         return true;
     }
 
+    /** One round of the pull readings. Asks for up to 6 at once when the car allows it. Returns readings received. */
+    private int pollPull(Elm327 elm) throws IOException {
+        List<Integer> want = new ArrayList<>();
+        for (int p : PullRecorder.PULL_SET) {
+            int q = p;
+            if (q == 0x34 && !has[0x34] && has[0x24]) q = 0x24;
+            if (has[q] && ObdParse.pidLen(q) > 0) want.add(q);
+        }
+        if (want.isEmpty()) return 0;
+        int got = 0;
+        if (multiMode != 0) {
+            for (int i = 0; i < want.size() && multiMode != 0; i += 6) {
+                int[] batch = new int[Math.min(6, want.size() - i)];
+                for (int k = 0; k < batch.length; k++) batch[k] = want.get(i + k);
+                got += readMulti(elm, batch);
+            }
+            if (multiMode != 0) return got;
+        }
+        for (int p : want) if (read(elm, p)) got++;
+        return got;
+    }
+
+    private int readMulti(Elm327 elm, int[] batch) throws IOException {
+        StringBuilder c = new StringBuilder("01");
+        int bytes = 1;
+        for (int p : batch) { c.append(String.format(Locale.US, "%02X", p)); bytes += 1 + ObdParse.pidLen(p); }
+        boolean count = multiMode != 2 && elm.countSuffix;
+        long t0 = SystemClock.elapsedRealtime();
+        String r = elm.cmd(c + (count ? Integer.toHexString(ObdParse.canFrames(bytes)).toUpperCase(Locale.US) : ""), 1500);
+        int[][] d = ObdParse.multiPid(r, batch);
+        int got = 0;
+        for (int p : batch) if (d[p] != null) { got++; sched.hit(p); decode(p, d[p]); }
+        if (multiMode < 0) {
+            if (got == batch.length) {
+                multiMode = count ? 1 : 2;
+                log(String.format(Locale.US, "pull: the car answers %d readings per request (%d ms)", batch.length, SystemClock.elapsedRealtime() - t0));
+            } else if (count) {
+                multiMode = 2;
+                return readMulti(elm, batch);
+            } else {
+                multiMode = 0;
+                log("pull: the car answers one reading per request (reply to " + c + ": " + r.replace('\n', ' ').trim() + ")");
+            }
+        }
+        return got;
+    }
+
+    public String pullStatus() { return pullStatus; }
+
     /** Shows "--" for a reading the car stopped answering, instead of freezing on its last value. */
     private void markStale(int pid) {
         synchronized (snap) {
@@ -320,6 +396,7 @@ public final class ObdSource implements Runnable {
 
     private void decode(int pid, int[] d) {
         int a = d.length > 0 ? d[0] : 0, b = d.length > 1 ? d[1] : 0;
+        record(pid, a, b);
         synchronized (snap) {
             switch (pid) {
                 case 0x0C: snap.rpm = ((a << 8) | b) / 4f; break;
@@ -340,6 +417,22 @@ public final class ObdSource implements Runnable {
                 default: break;
             }
         }
+    }
+
+    /** Hands a reading to the pull recorder in natural units. */
+    private void record(int pid, int a, int b) {
+        float v;
+        switch (pid) {
+            case 0x0C: v = ((a << 8) | b) / 4f; break;
+            case 0x0D: case 0x0B: v = a; break;
+            case 0x11: case 0x4C: case 0x49: case 0x04: v = a * 100f / 255f; break;
+            case 0x0E: v = a / 2f - 64f; break;
+            case 0x23: v = ((a << 8) | b) * 10f; break;
+            case 0x44: case 0x24: case 0x34: v = ((a << 8) | b) * 2f / 65536f; break;
+            case 0x33: pulls.setBaro(a); return;
+            default: return;
+        }
+        pulls.sample(SystemClock.elapsedRealtime(), pid, v);
     }
 
     /** Values the car does not report directly: fuel flow, power and torque (estimated from airflow when needed). */
@@ -382,7 +475,8 @@ public final class ObdSource implements Runnable {
                 out.append("error: ").append(e.getMessage()).append('\n');
             } finally {
                 if (headers) safe(elm, "ATH0", 1000);
-                backToEngine(elm);
+                safe(elm, "ATCAF1", 1000);
+                if (engineTx != null) backToEngine(elm); else toAllModules(elm);
             }
             main.post(new Runnable() { public void run() { cb.done(out.toString()); } });
         }

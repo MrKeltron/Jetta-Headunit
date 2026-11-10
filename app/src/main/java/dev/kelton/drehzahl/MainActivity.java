@@ -419,9 +419,10 @@ public class MainActivity extends Activity implements SensorEventListener {
             any = true;
         }
         if (i.hasExtra("power_follow")) { Prefs.put(Prefs.POWER_FOLLOW, i.getBooleanExtra("power_follow", false)); any = true; }
+        if (i.hasExtra("dock_mode")) { dev.kelton.drehzahl.core.DockMode.set(i.getBooleanExtra("dock_mode", false), null); any = true; }
         if (i.getBooleanExtra("wake", false)) wakeUp();
         if (i.getBooleanExtra("intro", false)) { playIntro(); any = true; }
-        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro"); i.removeExtra("wake"); i.removeExtra("power_follow"); i.removeExtra("save_settings"); i.removeExtra("load_settings");
+        i.removeExtra("style"); i.removeExtra("source"); i.removeExtra("open"); i.removeExtra("page"); i.removeExtra("intro"); i.removeExtra("wake"); i.removeExtra("power_follow"); i.removeExtra("dock_mode"); i.removeExtra("save_settings"); i.removeExtra("load_settings");
         return any;
     }
 

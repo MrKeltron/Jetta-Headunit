@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -299,6 +300,41 @@ public class SettingsScreen extends SplitScreen {
         p.addView(W.chevronRow(c, "Hotspot and tethering", "If you want the tablet online from your phone's hotspot", new View.OnClickListener() {
             public void onClick(View v) { open(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
         }));
+        dockRows(c, p);
+    }
+
+    private void dockRows(final Context c, LinearLayout p) {
+        p.addView(W.header(c, "USB-C dock"));
+        final boolean on = dev.kelton.drehzahl.core.DockMode.on();
+        p.addView(W.toggleRow(c, "Dock mode",
+                "For a powered USB-C hub or dock in the car. When the dock gets power, the tablet charges from it and still sees "
+                        + "a phone plugged into it, so wired CarPlay starts by itself. When the dock loses power, this tablet still "
+                        + "switches to powering it (and a phone left on it). Needs root.",
+                on, new Controls.BoolCb() {
+            public void on(final boolean v) {
+                if (!dev.kelton.drehzahl.sys.Root.present()) { W.toast(host, "Dock mode needs root"); refreshPage(); return; }
+                W.toast(host, v ? "Switching dock mode on. If a Grant popup shows, tap Grant." : "Switching dock mode off");
+                dev.kelton.drehzahl.core.DockMode.set(v, new dev.kelton.drehzahl.core.DockMode.Done() {
+                    public void on(boolean ok, String out) {
+                        W.toast(host, ok ? (v ? "Dock mode is on. It takes effect the next time the tablet is plugged in." : "Dock mode is off")
+                                : "Could not change dock mode. Check that root is granted to Drehzahl.");
+                        refreshPage();
+                    }
+                });
+            }
+        }));
+        if (!on) return;
+        final TextView log = W.note(c, "Reading the dock log...");
+        p.addView(log);
+        dev.kelton.drehzahl.core.DockMode.log(8, new dev.kelton.drehzahl.core.DockMode.Done() {
+            public void on(boolean ok, String out) {
+                String t = out == null ? "" : out.trim();
+                boolean running = t.matches("(?s).*running=[0-9]+$");
+                t = t.replaceAll("\\s*running=[0-9]*$", "").trim();
+                log.setText((running ? "Running." : "Not running. Switch dock mode off and on again.")
+                        + (t.isEmpty() ? "" : "\n" + t));
+            }
+        });
     }
 
     // ---- Tablet info ----

@@ -79,6 +79,7 @@ public class CoreService extends Service {
         watcher.start();
         PowerFollow.get(this).start();
         WifiGuard.get(this).start();
+        DockMode.ensureRunning();
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {

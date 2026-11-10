@@ -127,6 +127,59 @@ public final class ObdParse {
         return out;
     }
 
+    /** Data bytes of a mode 01 reading, or 0 when unknown. */
+    public static int pidLen(int pid) {
+        switch (pid & 0xFF) {
+            case 0x04: case 0x05: case 0x0B: case 0x0D: case 0x0E: case 0x0F: case 0x11: case 0x33:
+            case 0x45: case 0x46: case 0x47: case 0x49: case 0x4A: case 0x4C: case 0x5C: case 0x62:
+                return 1;
+            case 0x0C: case 0x10: case 0x1F: case 0x22: case 0x23: case 0x42: case 0x43: case 0x44:
+            case 0x5E: case 0x63:
+                return 2;
+            case 0x24: case 0x34:
+                return 4;
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Splits the reply to a request for several readings at once ("010C0B11"): 41 0C a b 0B a 11 a.
+     * Returns data per reading, null for readings not in the reply. Stops at padding or anything unexpected.
+     */
+    public static int[][] multiPid(String resp, int[] pids) {
+        int[][] out = new int[256][];
+        StringBuilder all = new StringBuilder();
+        for (String l : dataLines(resp)) {
+            boolean hex = true;
+            for (char c : l.toCharArray()) if (!isHex(c)) { hex = false; break; }
+            if (hex) all.append(l);
+        }
+        int[] b = hexBytes(all.toString());
+        int i = 0;
+        while (i < b.length && b[i] != 0x41) i++;
+        if (i >= b.length) return out;
+        i++;
+        boolean[] want = new boolean[256];
+        for (int p : pids) want[p & 0xFF] = true;
+        while (i < b.length) {
+            int pid = b[i];
+            int len = pidLen(pid);
+            if (!want[pid] || len == 0 || i + 1 + len > b.length) break;
+            int[] d = new int[len];
+            System.arraycopy(b, i + 1, d, 0, len);
+            out[pid] = d;
+            want[pid] = false;
+            i += 1 + len;
+        }
+        return out;
+    }
+
+    /** CAN frames a single-module reply of this many data bytes takes (single frame up to 7 bytes with its length). */
+    public static int canFrames(int bytes) {
+        return bytes <= 7 ? 1 : 1 + (bytes - 6 + 6) / 7; // first frame carries 6, each next one 7: 1 + ceil((n - 6) / 7)
+    }
+
     public static String module(String header) {
         switch (header) {
             case "7E8": return "Engine";

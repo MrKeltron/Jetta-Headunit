@@ -61,7 +61,7 @@ public class ObdConsoleScreen extends Screen {
 
         LinearLayout row = W.hbox(c);
         final EditText in = new EditText(c);
-        in.setHint("AT or OBD command, for example 010C");
+        in.setHint("AT or OBD command (010C), or several joined with ; to run as one block");
         in.setTypeface(Theme.mono());
         in.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Theme.dpf(18));
         in.setTextColor(Theme.TEXT);
@@ -92,12 +92,24 @@ public class ObdConsoleScreen extends Screen {
         return root;
     }
 
+    /**
+     * Sends one command, or several joined with ";" as one block: the gauges wait and no reset runs between
+     * them, so header and filter settings (ATSH, ATCRA, ATCAF0) stay in force for the whole block.
+     * Afterwards the adapter goes back to its normal settings.
+     */
     private void send(String cmd) {
-        final String c = cmd.trim().toUpperCase(Locale.US).replace(" ", "");
-        if (c.isEmpty()) return;
-        append("> " + c + "  ...");
-        ObdSource.get(host).submit(new String[] { c }, false, new ObdSource.Callback() {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        for (String x : cmd.split(";")) {
+            String c = x.trim().toUpperCase(Locale.US).replace(" ", "");
+            if (!c.isEmpty()) parts.add(c);
+        }
+        if (parts.isEmpty()) return;
+        final boolean block = parts.size() > 1;
+        if (!block) append("> " + parts.get(0) + "  ...");
+        else append("block of " + parts.size() + " commands ...");
+        ObdSource.get(host).submit(parts.toArray(new String[0]), false, new ObdSource.Callback() {
             public void done(String r) {
+                if (block) { append(r.trim()); return; }
                 String body = r.startsWith("> ") && r.indexOf('\n') > 0 ? r.substring(r.indexOf('\n') + 1) : r;
                 append(body.trim().isEmpty() ? "(empty reply)" : body.trim());
             }
