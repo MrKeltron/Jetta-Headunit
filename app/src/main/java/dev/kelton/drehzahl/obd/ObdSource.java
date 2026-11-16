@@ -44,7 +44,7 @@ public final class ObdSource implements Runnable {
     public static final String[] STATE_NAMES = { "Off", "Connecting", "Waiting", "Setting up", "Car not answering", "Live", "Error" };
     public static final String ACTION_USB_PERMISSION = "dev.kelton.drehzahl.USB_PERMISSION";
 
-    private static final int[] FAST = { 0x0C, 0x0D, 0x0B, 0x11, 0x10, 0x04 };
+    private static final int[] FAST = { 0x0C, 0x0D, 0x0B, 0x11, 0x10, 0x04, 0x43 };
     private static final int[] SLOW = { 0x05, 0x0F, 0x33, 0x42, 0x5C, 0x46, 0x5E, 0x62, 0x63 };
     private static final int[] BAUDS = { 115200, 38400, 9600, 500000 };
 
@@ -63,6 +63,13 @@ public final class ObdSource implements Runnable {
     private long pullSince;
     private volatile String pullStatus = "";
     private final PidScheduler sched = new PidScheduler();
+    /** Manufacturer readings (files/readings.txt), only while asking the engine directly. */
+    private MfrReadings mfr;
+    private float absLoad = Float.NaN;
+    private int mfrTimeouts;
+    private boolean pullTqFlip;
+    private int savedBefore;
+    private float liters = 2.0f;
     private String engineTx, engineRx;
     private final ArrayDeque<String> logLines = new ArrayDeque<>();
     private final SimpleDateFormat stamp = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
@@ -73,8 +80,10 @@ public final class ObdSource implements Runnable {
     public volatile int pidCount;
 
     private volatile boolean running;
-    private Thread thread;
+    private volatile Thread thread;
     private Link link;
+    /** The link this worker thread opened, so an old thread never closes a newer thread's link. */
+    private final ThreadLocal<Link> myLink = new ThreadLocal<>();
     private float baro = 101f;
     private float torqueRef = Float.NaN, torquePct = Float.NaN, fuelRatePid = Float.NaN;
     private boolean receiverOn;
@@ -122,6 +131,13 @@ public final class ObdSource implements Runnable {
 
     public boolean running() { return running; }
 
+    /**
+     * True while this thread is the current worker. restart() starts a new thread after waiting
+     * only 1.5 s, and a Bluetooth connect can take longer: the old thread must then stop instead of
+     * running next to the new one, where each would keep closing the other's link.
+     */
+    private boolean alive() { return running && Thread.currentThread() == thread; }
+
     /** Retry right away (a USB adapter was plugged in, or permission was granted). */
     public void poke() {
         synchronized (wake) { wake.notifyAll(); }
@@ -157,7 +173,7 @@ public final class ObdSource implements Runnable {
     @Override public void run() {
         int backoff = 2000;
         log("OBD2 started");
-        while (running) {
+        while (alive()) {
             try {
                 connectOnce();
                 backoff = 2000;
@@ -165,14 +181,16 @@ public final class ObdSource implements Runnable {
                 setState(WAITING, e.getMessage());
                 backoff = 2500;
             } catch (Exception e) {
-                if (!running) break;
+                if (!alive()) break;
                 lastError = e.getMessage() == null ? e.toString() : e.getMessage();
                 log("error: " + lastError);
                 setState(ERROR, lastError);
             } finally {
-                closeLink();
+                Link mine = myLink.get();
+                myLink.remove();
+                if (mine != null) { if (link == mine) link = null; mine.close(); }
             }
-            if (!running) break;
+            if (!alive()) break;
             synchronized (wake) { try { wake.wait(backoff); } catch (InterruptedException ignored) { } }
             backoff = Math.min(backoff * 2, 10000);
         }
@@ -181,7 +199,10 @@ public final class ObdSource implements Runnable {
 
     private void connectOnce() throws Exception {
         setState(CONNECTING, "");
-        link = openLink();
+        Link opened = openLink();
+        myLink.set(opened);
+        if (!alive()) return;
+        link = opened;
         linkName = link.describe();
         log("link: " + linkName);
         Elm327 elm = new Elm327(link, new Elm327.Log() { public void line(String s) { log(s); } });
@@ -202,14 +223,14 @@ public final class ObdSource implements Runnable {
 
         setState(SETUP, "Searching for the car's protocol (can take 10 seconds)");
         String r = elm.cmd("0100", 15000);
-        while (running && ObdParse.modeResponse(r, 1, 0) == null) {
+        while (alive() && ObdParse.modeResponse(r, 1, 0) == null) {
             setState(NO_CAR, "Turn the ignition on. Adapter sees " + (Float.isNaN(voltage) ? "--" : String.format(Locale.US, "%.1f V", voltage)) + ".");
             runJobs(elm);
             synchronized (wake) { wake.wait(3000); }
             voltage = ObdParse.volts(safe(elm, "ATRV", 1000));
             r = elm.cmd("0100", 15000);
         }
-        if (!running) return;
+        if (!alive()) return;
 
         java.util.Arrays.fill(has, false);
         engineTx = null;
@@ -232,7 +253,12 @@ public final class ObdSource implements Runnable {
         if (elm.countSuffix) { safe(elm, "ATAT0", 1000); safe(elm, "ATST32", 1000); }
         else safe(elm, "ATAT1", 1000);
         if (protocol.contains("CAN 11")) directToEngine(elm);
-        EventLog.add("obd: live, " + protocol.toLowerCase(Locale.US) + ", " + n + " pids");
+        try { startMfr(); } catch (RuntimeException e) { mfr = null; log("manufacturer readings not started: " + e); }
+        mfrTimeouts = 0;
+        faultBase = readFaults(elm);
+        EventLog.add("obd: live, " + protocol.toLowerCase(Locale.US) + ", " + n + " pids"
+                + (mfr != null ? ", " + mfr.items.size() + " manufacturer readings" : "")
+                + (!has[0x10] && has[0x43] ? ", airflow from absolute load" : ""));
         setState(LIVE, "");
         poll(elm);
     }
@@ -271,12 +297,18 @@ public final class ObdSource implements Runnable {
     private void poll(Elm327 elm) throws Exception {
         int slowIdx = 0, frames = 0, errors = 0;
         long rateStart = SystemClock.elapsedRealtime(), lastVolt = 0;
-        while (running) {
+        while (alive()) {
             runJobs(elm);
             long now = SystemClock.elapsedRealtime();
             if (pulls.active()) {
-                if (pullSince == 0) { pullSince = now; pullReads = 0; }
+                if (pullSince == 0) { pullSince = now; pullReads = 0; savedBefore = pulls.savedCount(); }
                 int got = pollPull(elm);
+                if (mfr != null) {
+                    // Torque asked for and made, taking turns, so the recorder sees both every few tenths of a second.
+                    MfrReadings.Item q = mfr.named(pullTqFlip ? "torque" : "torque_req");
+                    pullTqFlip = !pullTqFlip;
+                    try { if (q != null && readMfrItem(elm, q, now)) got++; } catch (RuntimeException ignored) { }
+                }
                 frames += got;
                 pullReads += got;
                 if (got == 0) errors++; else errors = 0;
@@ -284,6 +316,7 @@ public final class ObdSource implements Runnable {
                 if (errors >= 12) throw new IOException("The car stopped answering (ignition off?)");
                 continue;
             } else if (pullSince != 0) {
+                faultsAfterPull(elm);
                 float secs = (now - pullSince) / 1000f;
                 pullStatus = String.format(Locale.US, "%.1f readings per second in the last pull (%s)", pullReads / Math.max(0.1f, secs),
                         multiMode > 0 ? "several readings per request" : "one reading per request");
@@ -304,6 +337,15 @@ public final class ObdSource implements Runnable {
                 lastVolt = now;
                 float vv = ObdParse.volts(safe(elm, "ATRV", 800));
                 if (!Float.isNaN(vv)) { voltage = vv; synchronized (snap) { snap.batteryV = vv; } }
+            }
+            if (mfr != null) {
+                try {
+                    readMfr(elm, now);
+                    if (mfr != null) mfr.row(now, snap, absLoad);
+                } catch (RuntimeException e) {
+                    log("manufacturer readings stopped: " + e);
+                    mfr = null;
+                }
             }
             derive();
             if (now - rateStart >= 2000) {
@@ -330,6 +372,115 @@ public final class ObdSource implements Runnable {
         if (sched.hit(pid)) log(String.format(Locale.US, "PID %02X answering again", pid));
         decode(pid, d);
         return true;
+    }
+
+    private void startMfr() {
+        if (mfr != null) mfr.close();
+        mfr = null;
+        StringBuilder why = new StringBuilder();
+        MfrReadings m = MfrReadings.load(ctx, why);
+        if (why.length() > 0) log("manufacturer readings: " + why);
+        if (m == null) return;
+        liters = m.liters > 0.5f ? m.liters : 2.0f;
+        if (m.items.isEmpty()) return;
+        if (engineTx == null) { log("manufacturer readings need direct engine requests (CAN 11-bit), skipped"); return; }
+        mfr = m;
+        log("manufacturer readings: " + m.items.size() + " listed, logging to files/readings");
+    }
+
+    /** Asks for one manufacturer reading. Another module's header is set just for this request. */
+    private void readMfr(Elm327 elm, long now) throws IOException {
+        MfrReadings.Item it = mfr.nextDue(now);
+        if (it != null) readMfrItem(elm, it, now);
+    }
+
+    /** Asks for one manufacturer reading. True when it came back. */
+    private boolean readMfrItem(Elm327 elm, MfrReadings.Item it, long now) throws IOException {
+        boolean other = !it.tx.equals(engineTx);
+        if (other) { safe(elm, "ATSH" + it.tx, 1000); safe(elm, "ATCRA" + it.rx, 1000); }
+        String r;
+        try {
+            r = elm.cmd(String.format(Locale.US, "22%04X", it.did), 1500);
+            mfrTimeouts = 0;
+        } catch (IOException e) {
+            // A slow manufacturer reading must not end the whole session. Three in a row: stop asking.
+            if (other) backToEngine(elm);
+            mfr.handle(it, "", now);
+            if (++mfrTimeouts >= 3) { log("manufacturer readings stopped for this session: " + e.getMessage()); mfr.close(); mfr = null; }
+            return false;
+        }
+        if (other) backToEngine(elm);
+        if (!mfr.handle(it, CarScan.payload(r), now)) return false;
+        synchronized (snap) {
+            if (it.name.equals("oil")) snap.oilC = it.value;
+        }
+        if (it.name.equals("torque")) pulls.sample(now, PullRecorder.TQ_ACT, it.value);
+        else if (it.name.equals("torque_req")) pulls.sample(now, PullRecorder.TQ_REQ, it.value);
+        return true;
+    }
+
+    // ---------- fault memory around pulls ----------
+
+    /** VW fault memory at the start of the session: DTC (3 bytes) to status byte. */
+    private java.util.Map<Integer, Integer> faultBase;
+
+    /** Reads the engine's fault memory (UDS 19 02 FF). Null when it did not answer. */
+    private java.util.Map<Integer, Integer> readFaults(Elm327 elm) {
+        if (engineTx == null) return null;
+        try {
+            String hex = CarScan.payload(elm.cmd("1902FF", 4000));
+            int i = hex.indexOf("5902");
+            if (i < 0) return null;
+            java.util.Map<Integer, Integer> m = new java.util.LinkedHashMap<>();
+            for (int k = i + 6; k + 8 <= hex.length(); k += 8) {
+                String rec = hex.substring(k, k + 8);
+                if (rec.startsWith("AAAA") || !rec.matches("^[0-9A-F]{8}$")) break;
+                m.put(Integer.parseInt(rec.substring(0, 6), 16), Integer.parseInt(rec.substring(6), 16));
+            }
+            return m;
+        } catch (IOException | RuntimeException e) {
+            log("fault memory read failed: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** Status bits that mean the fault is (or was) real: failed now, pending, confirmed, failed since clear. */
+    private static String faultState(int st) {
+        StringBuilder b = new StringBuilder();
+        if ((st & 0x01) != 0) b.append("failing now, ");
+        if ((st & 0x04) != 0) b.append("pending, ");
+        if ((st & 0x08) != 0) b.append("stored, ");
+        if ((st & 0x80) != 0) b.append("warning light on, ");
+        if ((st & 0x20) != 0 && b.length() == 0) b.append("failed since the last clear, ");
+        return b.length() == 0 ? "" : b.substring(0, b.length() - 2);
+    }
+
+    /** After a pull: which engine faults appeared or changed, written to the pull's findings and the event log. */
+    private void faultsAfterPull(Elm327 elm) {
+        java.util.Map<Integer, Integer> now = readFaults(elm);
+        if (now == null) return;
+        StringBuilder b = new StringBuilder();
+        for (java.util.Map.Entry<Integer, Integer> e : now.entrySet()) {
+            int st = e.getValue();
+            Integer was = faultBase == null ? null : faultBase.get(e.getKey());
+            boolean real = (st & 0x2D) != 0;
+            if (!real || (was != null && (was & 0x2D) == (st & 0x2D))) continue;
+            b.append(String.format(Locale.US, " VW %d (%06X): %s%s;", e.getKey(), e.getKey(), faultState(st),
+                    was == null || (was & 0x2D) == 0 ? ", new" : ", changed"));
+        }
+        faultBase = now;
+        String generic = "";
+        try {
+            String r03 = elm.cmd("03", 2000), r07 = elm.cmd("07", 2000);
+            String c = (CarScan.payload(r03) + " " + CarScan.payload(r07)).trim();
+            if (c.matches(".*4[37]0[1-9A-F].*")) generic = " Generic codes: " + c + ".";
+        } catch (IOException ignored) { }
+        String text = b.length() == 0
+                ? "Engine fault memory read after the pull: nothing new." + generic
+                : "Engine fault memory read after the pull, new or changed:" + b.substring(0, b.length() - 1) + "." + generic;
+        if (pulls.savedCount() != savedBefore) PullStore.appendToNewest(ctx, text);
+        EventLog.add("pull: " + text);
+        log(text);
     }
 
     /** One round of the pull readings. Asks for up to 6 at once when the car allows it. Returns readings received. */
@@ -388,6 +539,7 @@ public final class ObdSource implements Runnable {
                 case 0x0B: snap.boostKpa = Float.NaN; break;
                 case 0x11: snap.throttle = Float.NaN; break;
                 case 0x10: snap.mafGs = Float.NaN; break;
+                case 0x43: absLoad = Float.NaN; if (!has[0x10]) snap.mafGs = Float.NaN; break;
                 case 0x04: snap.load = Float.NaN; break;
                 case 0x05: snap.coolantC = Float.NaN; break;
                 case 0x0F: snap.iatC = Float.NaN; break;
@@ -418,6 +570,12 @@ public final class ObdSource implements Runnable {
                 case 0x42: snap.batteryV = ((a << 8) | b) / 1000f; voltage = snap.batteryV; break;
                 case 0x5C: snap.oilC = a - 40; break;
                 case 0x46: snap.ambientC = a - 40; break;
+                case 0x43:
+                    // Absolute load is the air per intake stroke against a cylinder full of air at 1.184 g/L,
+                    // so with no airflow sensor reading it gives the airflow directly.
+                    absLoad = ((a << 8) | b) * 100f / 255f;
+                    if (!has[0x10]) snap.mafGs = absLoad / 100f * 1.184f * liters * snap.rpm / 120f;
+                    break;
                 case 0x5E: fuelRatePid = ((a << 8) | b) / 20f; break;
                 case 0x62: torquePct = a - 125; break;
                 case 0x63: torqueRef = (a << 8) | b; break;
@@ -447,7 +605,12 @@ public final class ObdSource implements Runnable {
         synchronized (snap) {
             snap.hasEngine = true;
             snap.fuelLph = !Float.isNaN(fuelRatePid) ? fuelRatePid : snap.mafGs * 3600f / 14.7f / 745f;
-            if (!Float.isNaN(torquePct) && !Float.isNaN(torqueRef) && snap.rpm > 300) {
+            MfrReadings.Item tq = mfr == null ? null : mfr.named("torque");
+            if (tq != null && !Float.isNaN(tq.value) && SystemClock.elapsedRealtime() - tq.at < 5000 && snap.rpm > 300) {
+                snap.torqueNm = Math.max(0f, tq.value);
+                snap.powerKw = snap.torqueNm * snap.rpm / 9549f;
+                snap.powerEstimated = false;
+            } else if (!Float.isNaN(torquePct) && !Float.isNaN(torqueRef) && snap.rpm > 300) {
                 snap.torqueNm = Math.max(0f, torqueRef * torquePct / 100f);
                 snap.powerKw = snap.torqueNm * snap.rpm / 9549f;
                 snap.powerEstimated = false;

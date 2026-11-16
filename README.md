@@ -41,9 +41,9 @@ fonts or logos are used.
 | Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
 | OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers), classic Bluetooth, or Bluetooth LE (no pairing; finds the adapter's data channel by itself). Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
 | Pull recorder | Car > Pull recorder. Records every full-throttle pull from the OBD2 adapter (boost, rpm, pedal, throttle asked and actual, timing, fuel rail pressure, commanded and measured lambda), from 5 s before the pedal goes down until the lift, asking up to 6 readings per request when the car allows it. Flags torque cuts (the ECU closing the throttle with the pedal down, felt as a buck) and says what led up to them, timing pulled below zero, rail pressure sag, running lean, and RPM flares without speed (DSG clutch slip). Chart with touch readout; each pull is also saved as a CSV |
-| Adapter console | Commands joined with ; run as one block with the gauges paused, so header and filter settings hold for the whole block; the adapter is put back to normal afterwards. Car scan (Quick or Full) reads every generic reading, the ID and fault memory of each engine-bay module and a sweep of the engine computer's manufacturer readings, read-only, into a text file |
+| Adapter console | Commands joined with ; run as one block with the gauges paused, so header and filter settings hold for the whole block; the adapter is put back to normal afterwards |
 | Follow car power | Optional: screen off a set time after the car's power goes away (the wait covers engine cranking), music paused; when power returns the screen wakes, the startup animation plays and the home screen opens. Uses a device admin with only the lock-screen policy. With a PIN or pattern set, the tablet wakes to its lock screen |
-| Wi-Fi guard | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. Works with root, or without root through a helper the PC toolkit starts once (Drehzahl restarts it itself after reboots). Logs audio dropouts every 30 s during wireless CarPlay. See [CarPlay audio dropouts](#carplay-audio-dropouts). Settings > CarPlay |
+| Wi-Fi guard (root) | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. A saved flag undoes a pause that was cut short, and Android resets auto-join at restart. Settings > CarPlay |
 | Dock mode (root) | Charge from a powered USB-C dock and run wired CarPlay through it at the same time. Docks without USB-PD give the tablet plain 5 V, and Android then can't be charging and USB host together: the tablet either charges and can't see the phone, or sees the phone and powers the dock and phone from its own battery (about 2 A, even with the car off). A small root module asks the USB-C port to take power only and, every time power arrives, restarts the USB controller in host mode, so the dock's hub and the phone show up while the tablet charges and CarPlay starts by itself. If nothing answers on USB (a charger or a computer) USB is left as normal. Not solved yet: when the dock loses power the tablet still switches to powering it. Settings > Connections |
 | Settings backup | Settings > Reset: save every Drehzahl setting to a file and load it again, for example before resetting or rooting the tablet |
 | Screens | Drawn for 1280 x 800 dp. Smaller tablets (for example 800 x 1280 at 240 dpi) shrink the whole layout to fit instead of cutting it off |
@@ -66,26 +66,14 @@ mixer reports no underruns and the effects use about a fifth of the time availab
 Fix, in CarLink: Settings > Show advanced (on) > Sound & voice > Music buffer > Long (1 s), and Buffered music on.
 Then disconnect and reconnect CarPlay. The PC toolkit can do this for you (see `toolkit/steps.txt` examples).
 
-That made home tests better but drives still stuttered. Measured on a TCL Tab 8 Gen 2 in the car (Nov 15, 2026), three
-more things take the single Wi-Fi radio away from the CarPlay link:
+That made home tests better but drives still stuttered. The second cause: away from a known Wi-Fi network, Android searches
+for one about every 20 s, and a single Wi-Fi radio has to leave the CarPlay channel for every search. Opening the tablet's
+Wi-Fi settings (which searches on purpose) makes CarPlay stutter on cue. On a rooted tablet Drehzahl's Wi-Fi guard pauses
+those searches while a phone is on the link (Settings > CarPlay). Android gives ordinary apps no way to stop them, so
+without root this part cannot be fixed by an app.
 
-1. Android searching for a Wi-Fi network (about every 20 s when none is joined). Drehzahl's Wi-Fi guard turns auto-join
-   off while a phone is on the CarPlay link and back on afterwards (Settings > CarPlay). No root needed: the PC toolkit
-   starts a small helper that runs as the shell user (option 8, or `Start Wi-Fi helper.bat`), and after one approval
-   Drehzahl restarts it by itself after a reboot, through the tablet's own adb (Settings > CarPlay > "Let Drehzahl
-   restart it"). Some makers block the Wi-Fi Direct broadcast for background apps (TCL), so the guard also asks every
-   4 s.
-2. The phone's hotspot. The iPhone has one radio too; serving a hotspot and the CarPlay link at once costs audio.
-   Turn the hotspot off (or forget it on the tablet) while you use wireless CarPlay.
-3. Location scans. CarLink passes the tablet's location to the iPhone and asks Android for network location too. While
-   the car moves, Google's location service scans for Wi-Fi networks about every 10 s on its behalf (seen as
-   `NetworkLocationScanner` in logcat). Fix: Settings > Location > Location services > Google Location Accuracy: off.
-   GPS keeps working. Parked, nothing moves and nothing scans, so this one only shows up on the road.
-
-With all three handled, a 3-minute sample lost no audio at all. During wireless CarPlay Drehzahl writes one line every
-30 s to `Android/data/dev.kelton.drehzahl/files/events.log`:
-`carplay audio: 2.1 s dropped in 30 s, worst gap 1189 ms, Wi-Fi scans 3 of 3 checks, 57 mph`. "Wi-Fi scans" counts
-the 10-second checks that found a scan newer than 10 s.
+If the tablet also joins a Wi-Fi network in the car (a phone hotspot, for example), keep that network on the same channel
+as CarPlay; a single Wi-Fi radio has to switch channels for every packet otherwise.
 
 ## Charging through a USB-C dock
 

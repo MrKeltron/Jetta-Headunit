@@ -14,6 +14,7 @@ public class PullTest {
         pullWithCut();
         quietCruise();
         stab();
+        torqueDrop();
         System.out.println(fails == 0 ? "PullTest: all passed" : "PullTest: " + fails + " failed");
         if (fails > 0) System.exit(1);
     }
@@ -90,5 +91,34 @@ public class PullTest {
             r.sample(t, 0x0C, 2500f);
         }
         check(saved[0] == 0, "stab: a 0.4 s blip is not a pull");
+    }
+
+    /** A short kickdown (0.9 s) where the ECU cuts torque with spark: throttle stays open, torque falls from 390 to 120 Nm. */
+    static void torqueDrop() {
+        PullRecorder r = new PullRecorder();
+        final PullRecorder.Pull[] got = new PullRecorder.Pull[1];
+        r.setSink(new PullRecorder.Sink() { public void saved(PullRecorder.Pull p) { got[0] = p; } });
+        r.setBaro(100f);
+        for (long t = 0; t <= 8000; t += 50) {
+            boolean floored = t >= 2000 && t < 2900;
+            r.sample(t, 0x49, floored ? 85f : 15f);
+            r.sample(t, 0x4C, floored ? 95f : 15f);
+            r.sample(t, 0x11, floored ? 95f : 15f);
+            r.sample(t, 0x0C, floored ? 2500f : 1800f);
+            r.sample(t, 0x0B, floored ? 220f : 60f);
+            if (t % 200 == 0) {
+                r.sample(t, PullRecorder.TQ_REQ, floored ? 430f : 80f);
+                r.sample(t + 100, PullRecorder.TQ_ACT, !floored ? 70f : t < 2600 ? 390f : 120f);
+            }
+        }
+        PullRecorder.Pull p = got[0];
+        check(p != null, "torque drop: a 0.9 s kickdown is kept");
+        if (p == null) return;
+        boolean drop = false, gap = false;
+        for (String f : p.findings) { if (f.startsWith("Torque dropped from 390 to 120")) drop = true; if (f.startsWith("Made 120 of the 430")) gap = true; }
+        check(drop, "torque drop: found with the throttle still open " + p.findings);
+        check(gap, "torque drop: reports torque made against torque asked");
+        check(p.cuts.size() == 1, "torque drop: counted as one cut " + p.cuts);
+        check(p.csv().startsWith("t_s,") && p.csv().split("\n")[0].endsWith("torque_asked_nm,torque_nm"), "torque drop: CSV has torque columns");
     }
 }

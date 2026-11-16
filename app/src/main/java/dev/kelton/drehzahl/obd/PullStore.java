@@ -61,6 +61,15 @@ public final class PullStore {
         }
     }
 
+    /** Adds finding lines to the newest pull's summary (fault memory read after the pull). */
+    public static void appendToNewest(Context c, String text) {
+        File[] f = list(c);
+        if (f.length == 0) return;
+        try (OutputStream o = new FileOutputStream(f[0], true)) {
+            o.write((text + "\n").getBytes("UTF-8"));
+        } catch (IOException ignored) { }
+    }
+
     /** Summary files, newest first. */
     public static File[] list(Context c) {
         File[] f = dir(c).listFiles(new java.io.FilenameFilter() {

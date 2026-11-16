@@ -16,9 +16,11 @@ public final class PullRecorder {
             TIMING = 0x0E, RAIL = 0x23, LAMBDA_CMD = 0x44, LAMBDA = 0x34, LOAD = 0x04;
     /** The readings asked for during a pull, most important first. 0x24 is used when 0x34 is missing. */
     public static final int[] PULL_SET = { RPM, MAP, THROTTLE, THROTTLE_CMD, PEDAL, TIMING, RAIL, LAMBDA_CMD, LAMBDA, SPEED, LOAD };
-    static final int[] COLUMNS = { RPM, SPEED, MAP, THROTTLE, THROTTLE_CMD, PEDAL, TIMING, RAIL, LAMBDA_CMD, LAMBDA, LOAD };
+    /** Manufacturer readings stored next to the OBD ones (no OBD PID uses these numbers): torque asked for and torque made, Nm. */
+    public static final int TQ_REQ = 0xF1, TQ_ACT = 0xF2;
+    static final int[] COLUMNS = { RPM, SPEED, MAP, THROTTLE, THROTTLE_CMD, PEDAL, TIMING, RAIL, LAMBDA_CMD, LAMBDA, LOAD, TQ_REQ, TQ_ACT };
 
-    static final long RING_MS = 20000, BEFORE_MS = 5000, AFTER_MS = 1500, MIN_PULL_MS = 1000, MAX_PULL_MS = 45000;
+    static final long RING_MS = 20000, BEFORE_MS = 5000, AFTER_MS = 1500, MIN_PULL_MS = 600, MAX_PULL_MS = 45000;
     static final float START = 0.80f, STOP = 0.45f;
 
     public interface Sink { void saved(Pull p); }
@@ -45,6 +47,9 @@ public final class PullRecorder {
     }
 
     public void setSink(Sink s) { sink = s; }
+    private volatile int saved;
+    /** Counts saved pulls, so a reader can tell whether the last one was kept. */
+    public int savedCount() { return saved; }
     public void setEnabled(boolean on) { enabled = on; if (!on) { state = 0; } }
     public void setBaro(float kpa) { if (kpa > 50) baro = kpa; }
     public synchronized boolean active() { return state != 0; }
@@ -100,6 +105,7 @@ public final class PullRecorder {
             if (rt[i] >= start - BEFORE_MS && rt[i] <= end + AFTER_MS) p.add(rt[i], rp[i], rv[i]);
         }
         p.analyze();
+        saved++;
         if (sink != null) sink.saved(p);
     }
 
@@ -159,7 +165,7 @@ public final class PullRecorder {
         public float boostPsi(float mapKpa) { return (mapKpa - baro) * 0.145038f; }
 
         public String csv() {
-            StringBuilder s = new StringBuilder("t_s,rpm,speed_kmh,boost_psi,throttle_pct,throttle_cmd_pct,pedal_pct,timing_deg,rail_bar,lambda_cmd,lambda,load_pct\n");
+            StringBuilder s = new StringBuilder("t_s,rpm,speed_kmh,boost_psi,throttle_pct,throttle_cmd_pct,pedal_pct,timing_deg,rail_bar,lambda_cmd,lambda,load_pct,torque_asked_nm,torque_nm\n");
             float[] row = new float[COLUMNS.length];
             for (int c = 0; c < row.length; c++) row[c] = Float.NaN;
             for (int i = 0; i < size(); i++) {
@@ -193,6 +199,7 @@ public final class PullRecorder {
                 }
             }
             findCuts();
+            findTorqueDrops();
             findFlares();
             if (nRail > 2 && minRailBar < 0.8f * rails / nRail)
                 findings.add(String.format(Locale.US, "Fuel rail pressure sagged to %.0f bar (average %.0f bar during the pull). Points to the high or low pressure fuel pump.", minRailBar, rails / nRail));
@@ -232,6 +239,10 @@ public final class PullRecorder {
                         (t - start) / 1000f, peak, now, rpm, boost));
                 if (!Float.isNaN(tim)) s.append(String.format(Locale.US, ", timing %.1f deg", tim));
                 if (!Float.isNaN(rail)) s.append(String.format(Locale.US, ", rail %.0f bar", rail / 100f));
+                float asked = at(TQ_REQ, before), made = at(TQ_ACT, before), after = minIn(TQ_ACT, t, t + 1000);
+                if (!Float.isNaN(made)) s.append(String.format(Locale.US, ", torque %.0f Nm", made));
+                if (!Float.isNaN(asked)) s.append(String.format(Locale.US, " (asked %.0f Nm)", asked));
+                if (!Float.isNaN(after) && !Float.isNaN(made)) s.append(String.format(Locale.US, ", torque after the cut %.0f Nm", after));
                 s.append('.');
                 float lead = maxIn(MAP, t - 1000, t);
                 if (!Float.isNaN(peakBoostPsi) && !Float.isNaN(lead) && boostPsi(lead) >= peakBoostPsi - 1.0f)
@@ -265,6 +276,50 @@ public final class PullRecorder {
         public boolean has(int pid) { return st[pid & 0xFF] != null; }
 
         /** Highest value of one reading between two times, NaN if none. */
+        float minIn(int pid, long from, long to) {
+            float m = Float.NaN;
+            for (int i = 0; i < size(); i++) if (pid(i) == pid && t(i) >= from && t(i) <= to && (Float.isNaN(m) || v(i) < m)) m = v(i);
+            return m;
+        }
+
+        /**
+         * Torque falling hard with the foot still down, even when the throttle stays open (the ECU can also
+         * cut torque with spark or fuel), and the biggest gap between torque asked for and torque made.
+         */
+        private void findTorqueDrops() {
+            if (!has(TQ_ACT)) return;
+            long lastDrop = -10000;
+            for (int i = 0; i < size(); i++) {
+                if (pid(i) != TQ_ACT) continue;
+                long t = t(i);
+                if (t < start || t > end || t - lastDrop < 1500) continue;
+                float now = v(i), peak = maxIn(TQ_ACT, t - 900, t - 1);
+                if (Float.isNaN(peak) || peak < 150f || now > 0.6f * peak) continue;
+                float pedal = hasPedal ? at(PEDAL, t) : Float.NaN;
+                if (hasPedal && (Float.isNaN(pedal) || pedal < 60f)) continue;
+                lastDrop = t;
+                boolean listed = false;
+                for (long c : cuts) if (Math.abs(c - t) < 1500) listed = true;
+                if (!listed) cuts.add(t);
+                float asked = at(TQ_REQ, t);
+                findings.add(String.format(Locale.US,
+                        "Torque dropped from %.0f to %.0f Nm at %.1f s with your foot down%s, at %,.0f rpm, boost %.1f psi.",
+                        peak, now, (t - start) / 1000f, Float.isNaN(asked) ? "" : String.format(Locale.US, " (asked for %.0f Nm)", asked),
+                        at(RPM, t), boostPsi(at(MAP, t))));
+            }
+            float worst = 0f, wAsked = Float.NaN, wMade = Float.NaN; long wT = 0;
+            for (int i = 0; i < size(); i++) {
+                if (pid(i) != TQ_ACT || t(i) < start || t(i) > end) continue;
+                float asked = at(TQ_REQ, t(i));
+                if (Float.isNaN(asked) || asked < 150f) continue;
+                float gap = (asked - v(i)) / asked;
+                if (gap > worst) { worst = gap; wAsked = asked; wMade = v(i); wT = t(i); }
+            }
+            if (worst >= 0.15f)
+                findings.add(String.format(Locale.US, "Made %.0f of the %.0f Nm the ECU asked for at %.1f s (%.0f%% short). Usually knock, boost falling short, or a torque limit.",
+                        wMade, wAsked, (wT - start) / 1000f, worst * 100f));
+        }
+
         float maxIn(int pid, long from, long to) {
             long[] ts = st[pid & 0xFF];
             if (ts == null) return Float.NaN;
