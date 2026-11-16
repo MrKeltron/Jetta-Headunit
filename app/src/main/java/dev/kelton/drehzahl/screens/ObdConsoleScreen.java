@@ -56,6 +56,9 @@ public class ObdConsoleScreen extends Screen {
             lp.rightMargin = Theme.dp(8);
             quick.addView(b, lp);
         }
+        TextView scan = W.button(c, "Car scan", true, new View.OnClickListener() { public void onClick(View v) { askScan(); } });
+        scan.setMinWidth(Theme.dp(120));
+        quick.addView(scan, W.lp(W.WRAP, W.WRAP));
         qs.addView(quick);
         root.addView(qs, W.margins(W.lp(W.MATCH, W.WRAP), 0, 12, 0, 10));
 
@@ -119,5 +122,34 @@ public class ObdConsoleScreen extends Screen {
     private void append(String s) {
         out.append(s + "\n");
         scroll.post(new Runnable() { public void run() { scroll.fullScroll(View.FOCUS_DOWN); } });
+    }
+
+    private void askScan() {
+        if (dev.kelton.drehzahl.obd.CarScan.busy) { W.toast(host, "A car scan is already running"); return; }
+        W.pick(host, "Car scan (read only, nothing in the car changes)", new String[] {
+                "Quick: modules, fault memory and about 4,400 values (about 5 minutes)",
+                "Full: about 12,600 values (about 12 minutes)" }, new dev.kelton.drehzahl.ui.Controls.IntCb() {
+            public void on(final int which) {
+                W.confirm(host, "Start the car scan?", "Park with the engine running. Live gauges pause until it finishes. "
+                        + "The result is saved in the scans folder for the PC toolkit.", new Runnable() {
+                    public void run() {
+                        ObdSource.get(host).submitTask(new dev.kelton.drehzahl.obd.CarScan(host,
+                                which == 1 ? dev.kelton.drehzahl.obd.CarScan.FULL : dev.kelton.drehzahl.obd.CarScan.QUICK));
+                        dev.kelton.drehzahl.core.EventLog.add("obd: car scan started (" + (which == 1 ? "full" : "quick") + ")");
+                        tick();
+                    }
+                });
+            }
+        });
+    }
+
+    private void tick() {
+        if (out == null) return;
+        String line = "scan: " + dev.kelton.drehzahl.obd.CarScan.phase;
+        out.setText(line + "\n" + out.getText().toString().replaceFirst("^scan: [^\n]*\n", ""));
+        if (dev.kelton.drehzahl.obd.CarScan.busy || dev.kelton.drehzahl.obd.CarScan.phase.isEmpty())
+            out.postDelayed(new Runnable() { public void run() { tick(); } }, 1000);
+        else dev.kelton.drehzahl.core.EventLog.add("obd: car scan " + dev.kelton.drehzahl.obd.CarScan.phase.toLowerCase(java.util.Locale.US)
+                + " (" + dev.kelton.drehzahl.obd.CarScan.lastFile + ")");
     }
 }

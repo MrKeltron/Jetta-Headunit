@@ -37,6 +37,8 @@ import dev.kelton.drehzahl.vehicle.VehicleData;
 public final class ObdSource implements Runnable {
     public interface Listener { void onObdStatus(); }
     public interface Callback { void done(String result); }
+    /** A longer job that talks to the adapter directly, like CarScan. Polling pauses while it runs. */
+    public interface ElmTask { void run(Elm327 elm) throws IOException; }
 
     public static final int OFF = 0, CONNECTING = 1, WAITING = 2, SETUP = 3, NO_CAR = 4, LIVE = 5, ERROR = 6;
     public static final String[] STATE_NAMES = { "Off", "Connecting", "Waiting", "Setting up", "Car not answering", "Live", "Error" };
@@ -134,7 +136,12 @@ public final class ObdSource implements Runnable {
         synchronized (jobs) { jobs.add(new Object[] { cmds, headers, cb }); }
     }
 
-    public List<String> log() { synchronized (logLines) { return new ArrayList<>(logLines); } }
+    public void submitTask(ElmTask t) {
+        synchronized (jobs) { jobs.add(new Object[] { t }); }
+        poke();
+    }
+
+        public List<String> log() { synchronized (logLines) { return new ArrayList<>(logLines); } }
 
     public void copyTo(VehicleData d) {
         synchronized (snap) {
@@ -459,6 +466,20 @@ public final class ObdSource implements Runnable {
             Object[] job;
             synchronized (jobs) { job = jobs.poll(); }
             if (job == null) return;
+            if (job.length == 1) {
+                ElmTask t = (ElmTask) job[0];
+                log("task " + t.getClass().getSimpleName() + " started");
+                try { t.run(elm); log("task finished"); }
+                catch (Exception e) { log("task stopped: " + e.getMessage()); }
+                finally {
+                    safe(elm, "ATH0", 1000);
+                    safe(elm, "ATCAF1", 1000);
+                    if (elm.countSuffix) { safe(elm, "ATAT0", 1000); safe(elm, "ATST32", 1000); }
+                    else { safe(elm, "ATST32", 1000); safe(elm, "ATAT1", 1000); }
+                    if (engineTx != null) backToEngine(elm); else toAllModules(elm);
+                }
+                continue;
+            }
             String[] cmds = (String[]) job[0];
             boolean headers = (Boolean) job[1];
             final Callback cb = (Callback) job[2];

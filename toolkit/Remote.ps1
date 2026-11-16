@@ -1,16 +1,22 @@
 # Drehzahl tablet toolkit: run the steps listed in toolkit\steps.txt, one per line, and save the results.
 #   DEVICE wifi|usb|<serial>|<ip>|<ip:port>  pick the tablet for the following steps (default: wifi).
 #                              With an IP the port is searched for when it has moved.
-#   FIXPORT                    move a network device to the fixed port 5555 until it restarts
+#   FIXPORT [save]             move the device to the fixed network port 5555 until it restarts
+#                              (from USB, or with save: also saves it as the tablet's address)
+#   PAIR <ip:port> <code>      pair this PC once with the tablet (Wireless debugging > Pair device with pairing code)
 #                              Prefer the serial when more than one tablet is plugged in.
 #   INSTALL                    install the newest Drehzahl APK from the apk folder
 #   APK <file>                 install any APK from the apk folder (wildcards allowed)
 #   SHELL <command>            run an adb shell command (use single quotes inside, not double)
+#   HELPER                     restart the Wi-Fi helper from the installed Drehzahl
 #   SAVE <name> <command>      run an adb shell command, output into reports\steps\<name>.txt
 #   ROOT <command>             run a command as root (su). No single quotes inside.
 #   RSAVE <name> <command>     like SAVE, as root
 #   PUSH <file> <tablet path>  copy a file from this folder to the tablet
 #   RUN <toolkit function>     run a toolkit step, for example Install-CarLink
+#   ADB <args>                 run adb with these arguments on the selected tablet (e.g. reboot bootloader)
+#   FASTBOOT <args>            run fastboot with these arguments (fastboot.exe next to adb.exe)
+#   FSAVE <name> <args>        like FASTBOOT, output into reports\steps\<name>.txt
 #   WAIT <seconds>             pause
 #   TAP <x> <y>                tap the tablet screen
 #   SHOT <name>                screenshot into reports\steps\<name>.png
@@ -38,6 +44,27 @@ $log = Join-Path $out 'output.txt'
 $done = Join-Path $out 'done.txt'
 
 $Script:StepLog = $log
+function Invoke-Fastboot {
+    param([string]$Args1, [int]$Seconds = 90)
+    $fb = Join-Path (Split-Path -Parent (Get-AdbPath)) 'fastboot.exe'
+    if (-not (Test-Path $fb)) { return 'fastboot.exe not found next to adb.exe' }
+    $list = @($Args1 -split '\s+' | Where-Object { $_ -ne '' })
+    $list = @($list | ForEach-Object { if ($_ -like 'magisk\*' -or $_ -like 'backup\*') { Join-Path $Script:Root $_ } else { $_ } })
+    $psi = New-Object System.Diagnostics.ProcessStartInfo $fb
+    $psi.Arguments = (($list | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' ')
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync()
+    $e = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit($Seconds * 1000)) {
+        try { $p.Kill() } catch { }
+        $t = 'timed out after ' + $Seconds + ' s (no device answered in fastboot mode)'
+    } else { $t = ($o.Result + $e.Result) }
+    return ('fastboot ' + ($list -join ' ') + "`n" + $t.Trim())
+}
 function Say {
     param([string]$Text, [string]$Color = 'Gray')
     Write-Host $Text -ForegroundColor $Color
@@ -226,15 +253,23 @@ function Invoke-Step {
             Out-Log (Invoke-Adb @('install', '-r', '-g', $apk.FullName)).Text
         }
         'SHELL' { Out-Log (Adb-Shell $arg) }
+        'HELPER' { Start-WifiHelper }
         'SAVE' { $p = Split-First $arg; Save-Text $p[0] (Adb-Shell $p[1]) }
         'ROOT' { Out-Log (Root-Shell $arg) }
         'RSAVE' { $p = Split-First $arg; Save-Text $p[0] (Root-Shell $p[1]) }
-        'FIXPORT' { Out-Log ('fixport: ' + (Pin-Port5555)) }
+        'FIXPORT' { Out-Log ('fixport: ' + (Pin-Port5555 -Save:($arg.Trim() -eq 'save'))) }
+        'PAIR' {
+            $p = Split-First $arg
+            Out-Log (Invoke-Adb -NoSerial @('pair', $p[0].Trim(), $p[1].Trim())).Text
+        }
         'PUSH' {
             $p = Split-First $arg
             Out-Log (Invoke-Adb @('push', (Join-Path $Script:Root $p[0]), $p[1])).Text
         }
         'RUN' { & $arg.Trim() }
+        'ADB' { Out-Log (Invoke-Adb @($arg -split '\s+' | Where-Object { $_ -ne '' })).Text }
+        'FASTBOOT' { Out-Log (Invoke-Fastboot $arg) }
+        'FSAVE' { $p = Split-First $arg; Save-Text $p[0] (Invoke-Fastboot $p[1]) }
         'WAIT' { Start-Sleep -Milliseconds ([int]([double]$arg * 1000)) }
         'TAP' { Adb-Shell ('input tap ' + $arg) | Out-Null }
         'SHOT' {
@@ -307,11 +342,12 @@ foreach ($raw in Get-Content (Join-Path $Script:Kit 'steps.txt')) {
         try { $ready = Select-Device $arg } catch { $ready = $false; Out-Log ('device failed: ' + $_.Exception.Message) }
         continue
     }
+    if ($op -eq 'PAIR') { try { Invoke-Step $op $arg } catch { Out-Log ('step failed: ' + $_.Exception.Message) }; continue }
     if (-not $picked) {
         $picked = $true
         try { $ready = Select-Device 'wifi' } catch { $ready = $false; Out-Log ('device failed: ' + $_.Exception.Message) }
     }
-    if (-not $ready -and $op -ne 'WAIT') { Out-Log 'skipped: no tablet selected'; continue }
+    if (-not $ready -and @('WAIT', 'FASTBOOT', 'FSAVE') -notcontains $op) { Out-Log 'skipped: no tablet selected'; continue }
     if ($Script:SkipRest) { Out-Log 'skipped'; continue }
     try {
         Invoke-Step $op $arg

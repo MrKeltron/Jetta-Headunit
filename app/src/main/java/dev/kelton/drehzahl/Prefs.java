@@ -56,8 +56,11 @@ public final class Prefs {
     public static final String START_VOL = "start_vol";    // max switch-on volume, percent
     public static final String POWER_FOLLOW = "power_follow"; // screen off without power, intro and home when it returns
     public static final String PULLS = "pulls";               // record full-throttle pulls
-    public static final String WIFI_GUARD = "wifi_guard";     // pause Wi-Fi network search during wireless CarPlay (root)
+    public static final String WIFI_GUARD = "wifi_guard";     // pause Wi-Fi network search during wireless CarPlay (root or PC helper)
     public static final String WIFI_GUARD_PAUSED = "wifi_guard_paused"; // set before a pause, cleared once the search is back on
+    public static final String SHELL_PORT = "shell_port";     // where the PC-started helper (sys.ShellHelper) listens
+    public static final String SHELL_TOKEN = "shell_token";
+    public static final String SELF_ADB_OK = "self_adb_ok";   // the tablet's adb has allowed Drehzahl's own key (core.HelperStarter)
     public static final String POWER_WAIT = "power_wait";     // seconds to wait before the screen turns off
     public static final String POWER_PAUSE = "power_pause";   // pause music when power is lost
     public static final String DOCK_MODE = "dock_mode";    // root module: charge from a USB-C dock and stay USB host

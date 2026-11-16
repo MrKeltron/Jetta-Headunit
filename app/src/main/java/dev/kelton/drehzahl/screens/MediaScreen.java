@@ -292,6 +292,8 @@ public class MediaScreen extends SplitScreen {
         p.addView(W.choiceRow(c, "Equalizer preset", null, Presets.NAMES, Prefs.i(Prefs.EQ_PRESET, 0), new Controls.IntCb() {
             public void on(int v) { Presets.load(v); SoundEngine.get(host).applyAll(); }
         }));
+        String gap = SoundEngine.get(host).reachProblem();
+        if (gap != null) p.addView(W.note(c, gap));
         p.addView(W.sliderRow(c, "Balance", -9, 9, Prefs.i(Prefs.BALANCE, 0), true, new Controls.Fmt() {
             public String f(int v) { return v == 0 ? "Center" : (v < 0 ? "L " + (-v) : "R " + v); }
         }, new Controls.IntCb() { public void on(int v) { Prefs.put(Prefs.BALANCE, v); SoundEngine.get(host).applyAll(); } }));

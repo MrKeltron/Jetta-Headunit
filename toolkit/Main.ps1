@@ -15,6 +15,7 @@ $menu = [ordered]@{
     '5' = @('Undo debloat (restore apps)',            { Start-Undo })
     '6' = @('Screenshot the tablet',                  { Save-Screenshot })
     '7' = @('Save the tablet log (after a crash)',    { Save-CrashLog })
+    '8' = @('Start Wi-Fi helper (after a restart)',   { Start-WifiHelper | Out-Null })
 }
 
 while ($true) {

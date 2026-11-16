@@ -227,7 +227,7 @@ public class SettingsScreen extends SplitScreen {
         p.addView(W.toggleRow(c, "Open when the tablet starts", null, Prefs.b(Prefs.BOOT_CP, false), new Controls.BoolCb() {
             public void on(boolean x) { Prefs.put(Prefs.BOOT_CP, x); }
         }));
-        p.addView(W.toggleRow(c, "Pause Wi-Fi search during wireless CarPlay", "Stops music dropping out. Needs root.",
+        p.addView(W.toggleRow(c, "Pause Wi-Fi search during wireless CarPlay", "Stops music dropping out. Needs root or the PC helper.",
                 dev.kelton.drehzahl.core.WifiGuard.enabled(), new Controls.BoolCb() {
             public void on(boolean x) {
                 Prefs.put(Prefs.WIFI_GUARD, x);
@@ -240,6 +240,27 @@ public class SettingsScreen extends SplitScreen {
             }
         }));
         p.addView(W.note(c, dev.kelton.drehzahl.core.WifiGuard.get(c).describe()));
+        if (!dev.kelton.drehzahl.sys.Root.present()) {
+            p.addView(W.chevronRow(c, "Let Drehzahl restart it",
+                    Prefs.b(Prefs.SELF_ADB_OK, false) ? "Allowed. Tap to restart the helper now." : "Shows \"Allow USB debugging?\" once: tick Always allow", new View.OnClickListener() {
+                public void onClick(View x) {
+                    W.toast(host, "Starting the Wi-Fi helper...");
+                    new Thread(new Runnable() {
+                        public void run() {
+                            final String r = dev.kelton.drehzahl.core.HelperStarter.start(host, null, true);
+                            dev.kelton.drehzahl.core.EventLog.add("Wi-Fi guard: start helper from Settings: " + r);
+                            host.runOnUiThread(new Runnable() {
+                                public void run() {
+                                    W.toast(host, r.startsWith("ok") ? "Wi-Fi helper running" : r.substring(Math.min(6, r.length())));
+                                    dev.kelton.drehzahl.core.WifiGuard.get(host).helperArrived();
+                                    refreshPage();
+                                }
+                            });
+                        }
+                    }).start();
+                }
+            }));
+        }
         p.addView(W.chevronRow(c, "Open CarPlay", null, new View.OnClickListener() {
             public void onClick(View x) { if (!CarLink.launch(host)) W.toast(host, "CarLink is not installed"); }
         }));

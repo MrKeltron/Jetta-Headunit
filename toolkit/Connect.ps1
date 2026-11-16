@@ -3,7 +3,9 @@
 function Test-Serial {
     param([string]$Target)
     $r = Invoke-Adb -NoSerial @('-s', $Target, 'get-state')
-    return ($r.Text.Trim() -eq 'device')
+    if ($r.Text.Trim() -ne 'device') { return $false }
+    $r = Invoke-Adb -NoSerial @('-s', $Target, 'shell', 'echo ok')
+    return ($r.Text.Trim() -eq 'ok')
 }
 
 function Get-ConnectedDevices {
@@ -67,19 +69,30 @@ function Connect-AtIp {
     return $false
 }
 
-# Moves a network device from its wandering wireless debugging port to 5555 until it restarts.
+# Moves the device to the fixed network port 5555 until it restarts, so it can be reached over Wi-Fi without pairing.
+# From USB: finds the tablet's Wi-Fi address and saves it as the tablet's address. From the network: keeps the saved address.
 function Pin-Port5555 {
-    if (-not $Script:Serial -or $Script:Serial -notmatch '^([0-9\.]+):([0-9]+)$') { return 'not a network device' }
-    $ip = $Matches[1]
-    if ($Matches[2] -eq '5555') { return 'already on 5555' }
+    param([switch]$Save)
+    if (-not $Script:Serial) { return 'no device' }
+    $fromUsb = $Script:Serial -notmatch '^([0-9\.]+):([0-9]+)$'
+    if ($fromUsb) {
+        $ip = ''
+        $addr = Adb-Shell 'ip -f inet addr show wlan0'
+        if ($addr -match 'inet ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)') { $ip = $Matches[1] }
+        if (-not $ip) { return 'the tablet has no Wi-Fi address (is Wi-Fi on and connected?)' }
+    } else {
+        $ip = $Matches[1]
+        if ($Matches[2] -eq '5555') { return 'already on 5555' }
+    }
     $old = $Script:Serial
     $t = (Invoke-Adb @('tcpip', '5555')).Text.Trim()
     Start-Sleep -Seconds 4
-    Invoke-Adb -NoSerial @('disconnect', $old) | Out-Null
+    if (-not $fromUsb) { Invoke-Adb -NoSerial @('disconnect', $old) | Out-Null }
     for ($i = 0; $i -lt 5; $i++) {
-        if (Try-Connect ($ip + ':5555') -NoSave) { return ($t + ' -> now on ' + $ip + ':5555') }
+        if (Try-Connect ($ip + ':5555') -NoSave:(-not ($fromUsb -or $Save))) { return ($t + ' -> now on ' + $ip + ':5555') }
         Start-Sleep -Seconds 2
     }
+    if ($fromUsb -and (Test-Serial $old)) { $Script:Serial = $old; return ($t + ' -> ' + $ip + ':5555 did not answer, still on USB') }
     if (Connect-AtIp $ip '') { return ($t + ' -> 5555 did not answer, back on ' + $Script:Serial) }
     $Script:Serial = $null
     return ($t + ' -> lost the device')
@@ -109,6 +122,13 @@ function Try-Connect {
     $msg = $r.Text.Trim()
     Say ('  adb connect ' + $Target + '  ->  ' + $msg) DarkGray
     if ($msg -match 'failed to authenticate|unauthorized') { $Script:NeedsPairing = $true }
+    if ($msg -match 'already connected' -and -not (Test-Serial $Target)) {
+        Say '  the old connection is stuck, reconnecting' DarkGray
+        Invoke-Adb -NoSerial @('disconnect', $Target) | Out-Null
+        Start-Sleep -Seconds 2
+        $msg = (Invoke-Adb -NoSerial @('connect', $Target)).Text.Trim()
+        Say ('  adb connect ' + $Target + '  ->  ' + $msg) DarkGray
+    }
     if ($msg -match 'connected to|already connected') {
         Start-Sleep -Milliseconds 700
         if (Test-Serial $Target) {

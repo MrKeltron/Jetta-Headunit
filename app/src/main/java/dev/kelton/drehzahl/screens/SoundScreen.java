@@ -60,6 +60,8 @@ public class SoundScreen extends SplitScreen {
                 Prefs.b(Prefs.EQ_ON, true), new Controls.BoolCb() {
                     public void on(boolean v) { Prefs.put(Prefs.EQ_ON, v); apply(); }
                 }));
+        String gap = eng().reachProblem();
+        if (gap != null) p.addView(W.note(c, gap));
         final EqView[] eqRef = new EqView[1];
         final LinearLayout presets = W.choiceRow(c, "Preset", null, Presets.NAMES, Prefs.i(Prefs.EQ_PRESET, 0), new Controls.IntCb() {
             public void on(int v) {
@@ -213,7 +215,7 @@ public class SoundScreen extends SplitScreen {
         p.addView(W.note(c, "Apps that ask: only players that announce themselves (Spotify, Pandora, many podcast apps).\n"
                 + "All players: also finds apps that do not announce themselves. Needs the DUMP permission from the PC toolkit.\n"
                 + "Whole tablet: the old global mode. Works on some tablets, ignored on others."));
-        p.addView(W.valueRow(c, "DUMP permission", e.canDump() ? "Granted" : "Not granted"));
+        p.addView(W.valueRow(c, "DUMP permission", e.canDump() ? "Granted" : "Not granted (run Install in the PC toolkit)"));
         p.addView(W.header(c, "Processing now"));
         List<String> s = e.describeSessions();
         if (s.isEmpty()) p.addView(W.note(c, "No audio sessions yet. Start music in any app and come back."));

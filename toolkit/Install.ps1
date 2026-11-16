@@ -44,8 +44,12 @@ function Install-Drehzahl {
     $apk = Get-ChildItem -Path $Script:ApkFolder -Filter 'Drehzahl*.apk' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($s['GitHubRepo']) {
         try {
-            $rel = Get-GitHubRelease $s['GitHubRepo'] 'latest-build'
-            $asset = $rel.assets | Where-Object { $_.name -like 'Drehzahl*.apk' } | Select-Object -First 1
+            $asset = $null
+            foreach ($tag in @('latest', 'latest-build')) {
+                try { $rel = Get-GitHubRelease $s['GitHubRepo'] $tag } catch { continue }
+                $a = $rel.assets | Where-Object { $_.name -like 'Drehzahl*.apk' } | Select-Object -First 1
+                if ($a -and ((-not $asset) -or ([datetime]$a.updated_at -gt [datetime]$asset.updated_at))) { $asset = $a }
+            }
             if ($asset -and ((-not $apk) -or ([datetime]$asset.updated_at -gt $apk.LastWriteTime))) {
                 Say ('Downloading ' + $asset.name + ' from github.com/' + $s['GitHubRepo'])
                 $apk = Get-Item (Save-Asset $asset $Script:ApkFolder)
@@ -77,7 +81,36 @@ function Install-Drehzahl {
         Say ('  home screen -> ' + $(if ($res) { $res } else { 'ok' })) DarkGray
     }
     Adb-Shell ('am start -n ' + $pkg + '/.MainActivity') | Out-Null
+    Start-Sleep -Seconds 3
+    Start-WifiHelper | Out-Null
     Say 'Drehzahl is installed and running on the tablet.' Green
+}
+
+# Starts sys.ShellHelper on the tablet as the shell user. It lets Drehzahl pause Wi-Fi network
+# search during wireless CarPlay without root. It runs until the tablet restarts.
+function Start-WifiHelper {
+    Require-Tablet
+    Step 'Wi-Fi helper (stops wireless CarPlay stutter without root)'
+    $s = Get-Settings
+    $pkg = $s['AppPackage']
+    $apk = ((Adb-Shell ('pm path ' + $pkg)) -split "`n" | Where-Object { $_ -like 'package:*base.apk*' } | Select-Object -First 1)
+    if (-not $apk) { Say 'Drehzahl is not installed on the tablet.' Red; return $false }
+    $apk = $apk.Trim().Substring(8)
+    $port = Get-Random -Minimum 20000 -Maximum 60000
+    $token = ([guid]::NewGuid().ToString('N')) + ([guid]::NewGuid().ToString('N'))
+    Adb-Shell 'for p in $(pidof drehzahl_helper); do kill $p; done; mv /data/local/tmp/drehzahl_helper.log /data/local/tmp/drehzahl_helper.old.log 2>/dev/null' | Out-Null
+    $cmd = 'CLASSPATH=' + $apk + ' setsid nohup app_process /system/bin --nice-name=drehzahl_helper dev.kelton.drehzahl.sys.ShellHelper ' + $port + ' ' + $token + ' >/dev/null 2>&1 </dev/null &'
+    Adb-Shell $cmd | Out-Null
+    Start-Sleep -Seconds 4
+    $hpid = (Adb-Shell 'pidof drehzahl_helper').Trim()
+    $log = (Adb-Shell 'cat /data/local/tmp/drehzahl_helper.log 2>&1').Trim()
+    foreach ($l in ($log -split "`n")) { Say ('  ' + $l.Trim()) DarkGray }
+    if ($hpid -and $log -match 'told Drehzahl') {
+        Say 'Wi-Fi helper is running. Start it again after the tablet restarts.' Green
+        return $true
+    }
+    Say 'The Wi-Fi helper did not start. The lines above say why.' Red
+    return $false
 }
 
 function Install-CarLink {

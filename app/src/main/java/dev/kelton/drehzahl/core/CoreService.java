@@ -66,6 +66,7 @@ public class CoreService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         Prefs.init(this);
+        EventLog.init(this);
         goForeground();
         IntentFilter f = new IntentFilter();
         f.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);

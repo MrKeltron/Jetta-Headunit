@@ -14,8 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Turns Wi-Fi auto-join, and with it Android's periodic network search, off or on.
- * Apps cannot do this, so WifiGuard starts this class as its own process through root:
+ * Apps cannot do this. WifiGuard starts this class as its own process through root:
  *   CLASSPATH=<Drehzahl apk> app_process /system/bin dev.kelton.drehzahl.sys.WifiAutojoin off|on|state
+ * or, without root, asks ShellHelper (started from the PC as the shell user) to run command().
  * It prints one line starting with MARK and exits. The setting is not saved; Android turns
  * auto-join back on when it restarts.
  */
@@ -35,20 +36,24 @@ public final class WifiAutojoin {
         });
         limit.setDaemon(true);
         limit.start();
-        String line;
-        try {
-            String what = args.length > 0 ? args[0] : "state";
-            Object wifi = service();
-            if (wifi == null) line = "unsupported no-wifi-service";
-            else if (what.equals("state")) line = "ok state=" + word(query(wifi));
-            else line = set(wifi, what.equals("on"));
-        } catch (SecurityException e) {
-            line = "denied " + e.getMessage();
-        } catch (Throwable t) {
-            line = "error " + t;
-        }
+        String line = command(args.length > 0 ? args[0] : "state");
         System.out.println(MARK + " " + line);
         System.exit(0);
+    }
+
+    /** on, off or state. Returns one line: ok ..., unsupported ..., denied ... or error ... */
+    public static String command(String what) {
+        try {
+            Object wifi = service();
+            if (wifi == null) return "unsupported no-wifi-service";
+            if (what.equals("state")) return "ok state=" + word(query(wifi));
+            if (what.equals("on") || what.equals("off")) return set(wifi, what.equals("on"));
+            return "error unknown " + what;
+        } catch (SecurityException e) {
+            return "denied " + e.getMessage();
+        } catch (Throwable t) {
+            return "error " + t;
+        }
     }
 
     private static Object service() throws Exception {

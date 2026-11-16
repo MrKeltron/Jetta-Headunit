@@ -98,6 +98,13 @@ public final class SoundEngine {
         return app.checkSelfPermission(android.Manifest.permission.DUMP) == PackageManager.PERMISSION_GRANTED;
     }
 
+    /** Why the effects may be missing most apps (CarPlay included), or null when nothing is in the way. */
+    public String reachProblem() {
+        if (Prefs.i(Prefs.FX_MODE, 1) != 1 || canDump()) return null;
+        return "CarPlay and most music apps are not getting these effects yet. Run Install in the PC toolkit once: "
+                + "it gives Drehzahl the DUMP permission, which Android only lets a computer grant.";
+    }
+
     public void addListener(Listener l) { if (!listeners.contains(l)) listeners.add(l); }
     public void removeListener(Listener l) { listeners.remove(l); }
 

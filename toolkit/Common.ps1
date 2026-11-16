@@ -77,6 +77,10 @@ function Get-AdbPath {
     if (Test-Path $local) { return $local }
     $cmd = Get-Command adb -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
+    foreach ($base in @((Join-Path $env:USERPROFILE 'Documents'), (Join-Path $env:USERPROFILE 'Downloads'), (Join-Path $env:USERPROFILE 'Desktop'))) {
+        $found = Get-ChildItem -Path $base -Filter 'adb.exe' -Recurse -Depth 3 -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -like '*platform-tools*' } | Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
     return $null
 }
 
