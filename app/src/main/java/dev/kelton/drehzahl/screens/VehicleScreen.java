@@ -378,9 +378,9 @@ public class VehicleScreen extends SplitScreen {
         }
         if (cur == 2) obdSection(c, p);
         if (cur == 2) {
-            final float eng = dev.kelton.drehzahl.obd.ObdSource.engineLiters();
+            final float eng = dev.kelton.drehzahl.obd.ObdSource.get(c).litersInUse();
             p.addView(W.chevronRow(c, "Engine size", String.format(java.util.Locale.US, "%.1f L", eng)
-                    + (Prefs.has(Prefs.ENGINE_L) ? "" : " (not set yet)")
+                    + (Prefs.has(Prefs.ENGINE_L) ? "" : (Math.abs(eng - 2.0f) > 0.001f ? " (from readings.txt)" : " (not set yet)"))
                     + ". Used to work out airflow, fuel use and power on cars that report no airflow sensor reading.", new View.OnClickListener() {
                 public void onClick(View v) {
                     W.askNumber(host, "Engine size", "litres", eng, new W.FloatCb() {
@@ -457,7 +457,7 @@ public class VehicleScreen extends SplitScreen {
                 Prefs.b(Prefs.OBD_TRAFFIC, false), new Controls.BoolCb() { public void on(boolean v) { Prefs.put(Prefs.OBD_TRAFFIC, v); obd.restart(); } }));
         p.addView(W.note(c, "USB: plug the adapter into the car, then into the tablet with a USB-C OTG adapter. Android asks once whether "
                 + "Drehzahl may use it; tick Always open. Turn the ignition on so the car answers.\n"
-                + "Bluetooth: needs a classic Bluetooth (SPP) adapter paired in Android settings first. BLE-only adapters are not supported yet."));
+                + "Bluetooth: pick the adapter above. Classic Bluetooth adapters have to be paired in Android settings first; Bluetooth LE ones need no pairing."));
     }
 
     private void pickBluetooth() {

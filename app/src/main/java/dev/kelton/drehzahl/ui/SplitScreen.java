@@ -115,6 +115,10 @@ public abstract class SplitScreen extends Screen {
     }
 
     public void select(int i) {
+        // A page number from a script or an older layout may not exist here (Car has fewer pages on the grid home).
+        int count = items().length;
+        if (count == 0) return;
+        if (i < 0 || i >= count) i = 0;
         selected = i;
         for (Runnable r : pageCleanups) {
             try { r.run(); } catch (RuntimeException ignored) { }

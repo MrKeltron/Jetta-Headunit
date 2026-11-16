@@ -399,6 +399,16 @@ public final class ObdSource implements Runnable {
     /** The engine size setting changed: use it from the next reading on. */
     public void engineChanged() { liters = engineLiters(); }
 
+    /** The engine size in use right now: the setting, else the "engine" line of readings.txt, else 2.0 L. */
+    public float litersInUse() {
+        if (Prefs.has(Prefs.ENGINE_L)) return engineLiters();
+        try {
+            MfrReadings m = MfrReadings.load(ctx, new StringBuilder());
+            if (m != null && m.liters > 0.5f) return m.liters;
+        } catch (RuntimeException ignored) { }
+        return engineLiters();
+    }
+
     /** Asks for one manufacturer reading. Another module's header is set just for this request. */
     private void readMfr(Elm327 elm, long now) throws IOException {
         MfrReadings.Item it = mfr.nextDue(now);
