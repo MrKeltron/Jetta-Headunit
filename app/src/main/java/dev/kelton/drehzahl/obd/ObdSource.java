@@ -69,7 +69,7 @@ public final class ObdSource implements Runnable {
     private int mfrTimeouts;
     private boolean pullTqFlip;
     private int savedBefore;
-    private float liters = 2.0f;
+    private volatile float liters = 2.0f;
     private String engineTx, engineRx;
     private final ArrayDeque<String> logLines = new ArrayDeque<>();
     private final SimpleDateFormat stamp = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
@@ -255,6 +255,7 @@ public final class ObdSource implements Runnable {
         if (protocol.contains("CAN 11")) directToEngine(elm);
         try { startMfr(); } catch (RuntimeException e) { mfr = null; log("manufacturer readings not started: " + e); }
         mfrTimeouts = 0;
+        faultsUnsupported = false;
         faultBase = readFaults(elm);
         EventLog.add("obd: live, " + protocol.toLowerCase(Locale.US) + ", " + n + " pids"
                 + (mfr != null ? ", " + mfr.items.size() + " manufacturer readings" : "")
@@ -378,15 +379,25 @@ public final class ObdSource implements Runnable {
         if (mfr != null) mfr.close();
         mfr = null;
         StringBuilder why = new StringBuilder();
+        liters = engineLiters();
         MfrReadings m = MfrReadings.load(ctx, why);
         if (why.length() > 0) log("manufacturer readings: " + why);
         if (m == null) return;
-        liters = m.liters > 0.5f ? m.liters : 2.0f;
+        if (!Prefs.has(Prefs.ENGINE_L) && m.liters > 0.5f) liters = m.liters;
         if (m.items.isEmpty()) return;
         if (engineTx == null) { log("manufacturer readings need direct engine requests (CAN 11-bit), skipped"); return; }
         mfr = m;
         log("manufacturer readings: " + m.items.size() + " listed, logging to files/readings");
     }
+
+    /** Engine size from Car > Data source, 2.0 L until it is set. */
+    public static float engineLiters() {
+        float v = Prefs.f(Prefs.ENGINE_L, 2.0f);
+        return v >= 0.3f && v <= 12f ? v : 2.0f;
+    }
+
+    /** The engine size setting changed: use it from the next reading on. */
+    public void engineChanged() { liters = engineLiters(); }
 
     /** Asks for one manufacturer reading. Another module's header is set just for this request. */
     private void readMfr(Elm327 elm, long now) throws IOException {
@@ -421,16 +432,22 @@ public final class ObdSource implements Runnable {
 
     // ---------- fault memory around pulls ----------
 
-    /** VW fault memory at the start of the session: DTC (3 bytes) to status byte. */
+    /** Engine fault memory (UDS) at the start of the session: DTC (3 bytes) to status byte. */
     private java.util.Map<Integer, Integer> faultBase;
+    private boolean faultsUnsupported;
 
     /** Reads the engine's fault memory (UDS 19 02 FF). Null when it did not answer. */
     private java.util.Map<Integer, Integer> readFaults(Elm327 elm) {
-        if (engineTx == null) return null;
+        if (engineTx == null || faultsUnsupported) return null;
         try {
             String hex = CarScan.payload(elm.cmd("1902FF", 4000));
             int i = hex.indexOf("5902");
-            if (i < 0) return null;
+            if (i < 0) {
+                // Not every engine computer speaks this service: ask once per session, not after every pull.
+                faultsUnsupported = true;
+                log("engine fault memory (UDS 19 02) not available on this car: " + hex);
+                return null;
+            }
             java.util.Map<Integer, Integer> m = new java.util.LinkedHashMap<>();
             for (int k = i + 6; k + 8 <= hex.length(); k += 8) {
                 String rec = hex.substring(k, k + 8);
@@ -465,7 +482,7 @@ public final class ObdSource implements Runnable {
             Integer was = faultBase == null ? null : faultBase.get(e.getKey());
             boolean real = (st & 0x2D) != 0;
             if (!real || (was != null && (was & 0x2D) == (st & 0x2D))) continue;
-            b.append(String.format(Locale.US, " VW %d (%06X): %s%s;", e.getKey(), e.getKey(), faultState(st),
+            b.append(String.format(Locale.US, " fault %06X (%d): %s%s;", e.getKey(), e.getKey(), faultState(st),
                     was == null || (was & 0x2D) == 0 ? ", new" : ", changed"));
         }
         faultBase = now;
@@ -698,7 +715,7 @@ public final class ObdSource implements Runnable {
         String addr = Prefs.s(Prefs.OBD_BT_ADDR, "");
         if (addr.isEmpty()) throw new WaitException("Pick your Bluetooth adapter in Car > Data source");
         if (Build.VERSION.SDK_INT >= 31 && ctx.checkSelfPermission("android.permission.BLUETOOTH_CONNECT") != PackageManager.PERMISSION_GRANTED) {
-            throw new WaitException("Bluetooth permission missing. Run Install in the PC toolkit.");
+            throw new WaitException("Bluetooth permission missing. Pick the adapter again in Car > Data source and tap Allow.");
         }
         BluetoothManager bm = (BluetoothManager) ctx.getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter ba = bm == null ? null : bm.getAdapter();
@@ -745,8 +762,10 @@ public final class ObdSource implements Runnable {
     }
 
     private void log(String s) {
-        String line = stamp.format(new Date()) + "  " + s;
+        String line;
         synchronized (logLines) {
+            // SimpleDateFormat is not safe from two threads at once (the worker and the main thread both log).
+            line = stamp.format(new Date()) + "  " + s;
             logLines.add(line);
             while (logLines.size() > 300) logLines.poll();
         }

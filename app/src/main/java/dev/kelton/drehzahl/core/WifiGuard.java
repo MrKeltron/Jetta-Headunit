@@ -321,7 +321,8 @@ public final class WifiGuard {
         try {
             dev.kelton.drehzahl.vehicle.VehicleData d = new dev.kelton.drehzahl.vehicle.VehicleData();
             dev.kelton.drehzahl.obd.ObdSource.get(ctx).copyTo(d);
-            if (d.hasSpeed) speed = ", " + Math.round(d.speedKmh * 0.621371) + " mph";
+            if (d.hasSpeed) speed = Prefs.i(Prefs.U_SPEED, 0) == 1 ? ", " + Math.round(d.speedKmh) + " km/h"
+                    : ", " + Math.round(d.speedKmh * 0.621371) + " mph";
         } catch (Throwable ignored) { }
         EventLog.add(String.format(java.util.Locale.US, "carplay audio: %.1f s dropped in 30 s, worst gap %d ms, Wi-Fi scans %d of %d checks%s",
                 lostSum / SAMPLE_RATE, worstGap, scansSeen, probes, speed));

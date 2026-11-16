@@ -9,9 +9,10 @@ public final class Prefs {
 
     // Display
     public static final String THEME = "theme";            // 0 night, 1 day, 2 auto (light sensor)
-    public static final String STYLE = "style";            // ui.Theme.GLI, CARBON, SIMPLE, CODE, CLASSIC
+    public static final String STYLE = "style";            // ui.Theme.REDLINE, CARBON, SIMPLE, CODE, CLASSIC
     public static final String INTRO = "intro";
     public static final String INTRO_TEXT = "intro_text";
+    public static final String DEFAULT_INTRO_TEXT = "DREHZAHL";
     public static final String ACCENT = "accent";
     public static final String HIDE_BARS = "hide_bars";
     public static final String KEEP_ON = "keep_on";
@@ -28,6 +29,7 @@ public final class Prefs {
     public static final String U_CONS = "u_cons";          // 0 mpg, 1 L/100 km
     // Vehicle
     public static final String SOURCE = "source";          // 0 demo, 1 tablet sensors, 2 OBD2, 3 tuner
+    public static final String ENGINE_L = "engine_l";      // engine size in litres, for airflow on cars without an airflow reading
     public static final String PROFILE = "profile";        // 0 eco, 1 normal, 2 sport, 3 individual
     public static final String GAUGES = "gauges";
     public static final String G_CAL = "g_cal";
@@ -72,6 +74,7 @@ public final class Prefs {
     public static final String AUTO_CP = "auto_carplay";
     public static final String BOOT_CP = "boot_carplay";
     public static final String ICON_PACK = "icon_pack";
+    public static final String STOCK_LAUNCHER = "stock_launcher"; // "package/class" the Stock launcher button opens, empty = the tablet's own
     // OBD2
     public static final String OBD_LINK = "obd_link";       // 0 USB, 1 Bluetooth
     public static final String OBD_BT_ADDR = "obd_bt_addr";

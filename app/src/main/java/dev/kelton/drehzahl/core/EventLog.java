@@ -31,7 +31,7 @@ public final class EventLog {
 
     public static void init(android.content.Context c) {
         java.io.File dir = c.getExternalFilesDir(null);
-        if (dir != null) file = new java.io.File(dir, "events.log");
+        if (dir != null && file == null) file = new java.io.File(dir, "events.log");
     }
 
     private static void save(final String line) {
@@ -49,9 +49,11 @@ public final class EventLog {
 
     public static void add(String msg) {
         android.util.Log.i("Drehzahl", msg);
-        save(day.format(new Date()) + "  " + msg);
         synchronized (lines) {
-            lines.add(fmt.format(new Date()) + "  " + msg);
+            // The date formatters are shared and not safe from two threads at once, so they stay inside the lock.
+            Date now = new Date();
+            save(day.format(now) + "  " + msg);
+            lines.add(fmt.format(now) + "  " + msg);
             while (lines.size() > MAX) lines.remove(0);
         }
         main.post(new Runnable() {

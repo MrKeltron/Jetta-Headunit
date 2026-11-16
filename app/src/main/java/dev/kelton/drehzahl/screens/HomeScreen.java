@@ -148,7 +148,7 @@ public class HomeScreen extends Screen {
         if (!m.permitted) {
             appName.setText("MEDIA");
             title.setText("Media info is off");
-            artist.setText("Run Install in the PC toolkit to allow it");
+            artist.setText("Tap to allow it");
         } else {
             appName.setText(m.hasSession() ? m.appName().toUpperCase(Locale.US) : "MEDIA");
             title.setText(m.title());
@@ -169,7 +169,7 @@ public class HomeScreen extends Screen {
         boolean h24 = Prefs.b(Prefs.CLOCK24, false);
         bigClock.setText(new SimpleDateFormat(h24 ? "HH:mm" : "h:mm", Locale.US).format(now));
         bigDate.setText(new SimpleDateFormat("EEEE, MMMM d", Locale.US).format(now));
-        if (!CarLink.installed(host)) cpStatus.setText("CarLink not installed yet. Use Install in the PC toolkit.");
+        if (!CarLink.installed(host)) cpStatus.setText("CarLink is not installed yet. Tap for how to get it.");
         else cpStatus.setText("Tap to open. Plug in your iPhone or connect wirelessly.");
         sourceTag.setText(VehicleHub.SOURCES[VehicleHub.get(host).source()].toUpperCase(Locale.US));
     }

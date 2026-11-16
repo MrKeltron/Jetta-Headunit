@@ -15,8 +15,8 @@ import dev.kelton.drehzahl.Prefs;
  * so a new theme is one more case in init() plus a backdrop and tile style if wanted.
  */
 public final class Theme {
-    public static final int GLI = 0, CARBON = 1, SIMPLE = 2, CODE = 3, CLASSIC = 4;
-    public static final String[] STYLE_NAMES = { "GLI", "Carbon", "Simple", "Code", "Classic" };
+    public static final int REDLINE = 0, CARBON = 1, SIMPLE = 2, CODE = 3, CLASSIC = 4;
+    public static final String[] STYLE_NAMES = { "Redline", "Carbon", "Simple", "Code", "Classic" };
     public static final String[] STYLE_INFO = {
         "Red on black, hex pattern, square buttons, Saira font. Startup: tach sweep and red stripe.",
         "Carbon weave, round metal buttons, amber accents, Rajdhani font.",
@@ -32,7 +32,7 @@ public final class Theme {
     public static int BG, PANEL, PANEL2, LINE, TEXT, DIM, FAINT;
     public static final int WARN = 0xFFFFB020, BAD = 0xFFFF3B3B, GOOD = 0xFF35D07F;
     public static int accent = ACCENTS[0];
-    public static int style = GLI;
+    public static int style = REDLINE;
     public static boolean night = true;
     public static boolean upper;
     public static float textScale = 1f;
@@ -57,9 +57,9 @@ public final class Theme {
         fit = Math.max(0.5f, Math.min(1f, Math.min(wDp / DESIGN_W, hDp / DESIGN_H)));
         density = m.density * fit;
         night = isNight;
-        style = Math.max(0, Math.min(STYLE_NAMES.length - 1, Prefs.i(Prefs.STYLE, GLI)));
+        style = Math.max(0, Math.min(STYLE_NAMES.length - 1, Prefs.i(Prefs.STYLE, REDLINE)));
         switch (style) {
-            case GLI:
+            case REDLINE:
                 palette(night, 0xFF08090B, 0xF2131417, 0xFF1D1F24, 0xFF2B2E35, 0xFFF3F3F5, 0xFF9298A2, 0xFF4C5059,
                         0xFFECEDEF, 0xF7FFFFFF, 0xFFE2E4E8, 0xFFCDD0D6, 0xFF111216, 0xFF5A606A, 0xFFA6ABB3);
                 fonts(c, "saira_300", "saira_400", "saira_600", "saira_600");

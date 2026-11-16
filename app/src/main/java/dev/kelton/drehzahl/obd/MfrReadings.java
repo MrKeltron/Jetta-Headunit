@@ -17,14 +17,15 @@ import dev.kelton.drehzahl.vehicle.VehicleData;
 
 /**
  * Manufacturer readings: values a car only gives through its own diagnostic IDs (UDS service 22),
- * such as oil temperature on VW engines that do not report it over generic OBD2.
+ * such as oil temperature on engines that do not report it over generic OBD2.
  *
  * The list lives in Android/data/dev.kelton.drehzahl/files/readings.txt, one reading per line:
  *   name  request-header  DID  formula
  *   oil    7E0  11F7  u8-40
  * Names "oil" and "torque" feed the gauges, "torque" and "torque_req" also go into recorded pulls; any other name is only logged. Formulas: u8, u8-40,
  * u16, s16, u16/10, s16/10, k10 (tenths of a kelvin to degrees C), u32. A line "engine 1.984" sets
- * the displacement in litres used to work out airflow when the car has no airflow sensor reading.
+ * the displacement in litres used to work out airflow when the car has no airflow sensor reading
+ * (Car > Data source > Engine size overrides it).
  * While any reading is listed, every 2 s a row goes to files/readings/readings-<time>.csv with the
  * generic values next to the raw manufacturer values, so unknown IDs can be matched up after a drive.
  */
@@ -52,7 +53,8 @@ final class MfrReadings {
     }
 
     final List<Item> items = new ArrayList<>();
-    float liters = 2.0f;
+    /** From an "engine" line, 0 when the file has none. */
+    float liters;
     private int next;
     private FileWriter csv;
     private long lastRow;
@@ -167,20 +169,16 @@ final class MfrReadings {
     }
 
     /**
-     * Starter list for a VW/Audi engine computer (7E0), from a Car scan of a 2015 Jetta GLI (EA888,
-     * data set EV_ECM20TFS02006K997071H), matched against drives on Nov 15, 2026.
+     * Starter file: explains the format and lists nothing, because these IDs differ per car maker and engine.
+     * Ready-made lists live in the source code under docs/readings.
      */
     private static final String STARTER =
             "# Drehzahl manufacturer readings. One per line: name header DID formula\n"
-            + "# Names oil, torque and torque_req are used; anything else is only logged to files/readings/*.csv.\n"
-            + "# Formulas: u8 u8-40 u16 s16 u16/10 s16/10 k10 u32 raw. Delete every line to turn this off.\n"
-            + "engine 1.984\n"
-            + "# Engine oil temperature from the ECU (22 202F, tenths of a kelvin). Runs hotter than the dash's oil reading on the road.\n"
-            + "oil 7E0 202F k10\n"
-            + "# Torque made and torque asked for, tenths of Nm (22 2061 and 22 20EB). The pull recorder reads both during pulls.\n"
-            + "torque 7E0 2061 u16/10\ntorque_req 7E0 20EB u16/10\n"
-            + "# Candidates for the dash's oil temperature, only logged:\n"
-            + "t 7E0 11CD u8-40\nt 7E0 16B0 u8-40\nt 7E0 1432 u8-40\nt 7E0 14A6 u8-40\nt 7E0 143E u8-40\nk 7E0 1133 k10\nk 7E0 2065 k10\n"
-            + "# Pedal and throttle in tenths of a percent (likely), only logged:\n"
-            + "n 7E0 20BA u16\nn 7E0 20E6 u16\n";
+            + "# Example:  oil 7E0 202F k10\n"
+            + "# Names oil, torque and torque_req are used by the gauges and the pull recorder;\n"
+            + "# anything else is only logged to files/readings/*.csv.\n"
+            + "# Formulas: u8 u8-40 u16 s16 u16/10 s16/10 k10 u32 raw.\n"
+            + "# These IDs are different for every car maker and engine. Find yours with\n"
+            + "# Car > Trouble codes > OBD console > Car scan, or copy a list from docs/readings\n"
+            + "# in the Drehzahl source code. Nothing is asked for until a reading is listed here.\n";
 }

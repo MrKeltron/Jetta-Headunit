@@ -12,9 +12,11 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 
+import dev.kelton.drehzahl.Prefs;
+
 /**
  * Startup animation, one per theme. Plays once when the app starts (or after picking a theme), tap to skip.
- * GLI: hex cells light up, the tach needle sweeps to redline and back, a red stripe crosses the screen, then the text.
+ * Redline: hex cells light up, the tach needle sweeps to redline and back, a red stripe crosses the screen, then the text.
  */
 public class IntroView extends View {
     private final int style;
@@ -32,11 +34,11 @@ public class IntroView extends View {
     public IntroView(Context c, int style, String text, String[] bootLines, Runnable onDone) {
         super(c);
         this.style = style;
-        this.text = text == null || text.trim().isEmpty() ? "GLI" : text.trim();
+        this.text = text == null || text.trim().isEmpty() ? Prefs.DEFAULT_INTRO_TEXT : text.trim();
         this.bootLines = bootLines;
         this.onDone = onDone;
         switch (style) {
-            case Theme.GLI: length = 3000; break;
+            case Theme.REDLINE: length = 3000; break;
             case Theme.CARBON: length = 2600; break;
             case Theme.CODE: length = 2800; break;
             case Theme.SIMPLE: length = 1500; break;
@@ -67,7 +69,7 @@ public class IntroView extends View {
         setAlpha(1f - ease(fadeOut));
         c.drawColor(0xFF000000);
         switch (style) {
-            case Theme.GLI: gli(c, t); break;
+            case Theme.REDLINE: redline(c, t); break;
             case Theme.CARBON: carbon(c, t); break;
             case Theme.CODE: code(c, t); break;
             case Theme.SIMPLE: simple(c, t); break;
@@ -76,8 +78,8 @@ public class IntroView extends View {
         postInvalidateOnAnimation();
     }
 
-    // ---------- GLI ----------
-    private void gli(Canvas c, float t) {
+    // ---------- Redline ----------
+    private void redline(Canvas c, float t) {
         float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h * 0.46f;
         // 1. hex cells light up in a ring wave from the middle
         float hr = Theme.dpf(30), hw = (float) (Math.sqrt(3) * hr);

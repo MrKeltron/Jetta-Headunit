@@ -10,7 +10,7 @@ import android.graphics.SweepGradient;
 import android.view.MotionEvent;
 import android.view.View;
 
-/** One home screen button. How it looks depends on the theme: square (GLI), round metal (Carbon), flat (Simple). */
+/** One home screen button. How it looks depends on the theme: square (Redline), round metal (Carbon), flat (Simple). */
 public class TileView extends View {
     private final Icons icon;
     private final String label;

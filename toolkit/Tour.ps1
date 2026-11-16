@@ -33,7 +33,7 @@ Start-Sleep -Milliseconds 1600
 Shot '00-cold-start-intro'
 Start-Sleep -Seconds 3
 
-$names = @('gli', 'carbon', 'simple', 'code', 'classic')
+$names = @('redline', 'carbon', 'simple', 'code', 'classic')
 for ($i = 0; $i -lt $names.Count; $i++) {
     $n = $names[$i]
     Step ('Theme ' + $n)
@@ -55,7 +55,7 @@ for ($i = 0; $i -lt $names.Count; $i++) {
     Open '--ei open 6 --ei page 0'
     Shot ($n + '-8-settings')
 }
-Step 'OBD2 screens (GLI theme)'
+Step 'OBD2 screens (Redline theme)'
 Open '--ei style 0 --ei source 2' 3
 Open '--ei open 3 --ei page 4' 3
 Shot 'obd-1-data-source'

@@ -1,7 +1,7 @@
 DREHZAHL TABLET TOOLKIT
 =======================
 
-What this folder does: talks to your onn tablet over Wi-Fi (ADB) to pair it,
+What this folder does: talks to your Android tablet over Wi-Fi (ADB) to pair it,
 debloat it, install the Drehzahl head unit app and CarLink (CarPlay), and save
 reports you can share when asking for help.
 

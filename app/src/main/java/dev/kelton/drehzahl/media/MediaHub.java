@@ -55,6 +55,21 @@ public final class MediaHub implements MediaSessionManager.OnActiveSessionsChang
         }
     }
 
+    /**
+     * Opens Android's Notification access page, where "Drehzahl media info" can be switched on by hand.
+     * That is all Drehzahl needs to show what other apps are playing; the PC toolkit does the same over ADB.
+     */
+    public static void openAccessSettings(Context c) {
+        android.content.Intent i = new android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            c.startActivity(i);
+            dev.kelton.drehzahl.ui.W.toast(c, "Switch on \"Drehzahl media info\", then come back");
+        } catch (RuntimeException e) {
+            dev.kelton.drehzahl.ui.W.toast(c, "Open Android settings > Notifications > Notification access and switch on Drehzahl media info");
+        }
+    }
+
     private ComponentName component() { return new ComponentName(ctx, MediaListener.class); }
 
     private void refresh() {

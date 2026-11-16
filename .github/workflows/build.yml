@@ -35,6 +35,9 @@ jobs:
             echo "No KEYSTORE_B64 secret: building with a throwaway key, no release will be published."
           fi
 
+      - name: Tests
+        run: bash tools/test/run.sh
+
       - name: Build
         run: bash build.sh
 

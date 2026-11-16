@@ -8,7 +8,6 @@ import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -71,10 +70,10 @@ public class HomeGridScreen extends Screen {
         a.add(new App(Icons.WIDGETS, "Widgets", nav(MainActivity.WIDGETS)));
         a.add(new App(Icons.APPS, "Apps", nav(MainActivity.APPS)));
         a.add(new App(Icons.SETTINGS, "Settings", nav(MainActivity.SETTINGS)));
-        a.add(new App(Icons.TABLET, "Android", new Runnable() {
+        a.add(new App(Icons.TABLET, "Stock launcher", new Runnable() {
             public void run() {
-                Intent i = new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                try { host.startActivity(i); } catch (RuntimeException ignored) { }
+                if (!dev.kelton.drehzahl.sys.Launchers.open(host))
+                    W.toast(host, "No other launcher found on this tablet. Pick one in Settings > Home and apps.");
             }
         }));
         return a;
@@ -90,7 +89,9 @@ public class HomeGridScreen extends Screen {
         String[] pkgs = { "com.google.android.apps.maps", "com.waze", "app.organicmaps", "net.osmand", "com.here.app.maps" };
         for (String p : pkgs) {
             Intent i = c.getPackageManager().getLaunchIntentForPackage(p);
-            if (i != null) { i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); c.startActivity(i); return; }
+            if (i == null) continue;
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { c.startActivity(i); return; } catch (RuntimeException ignored) { }
         }
         W.toast(c, "No navigation app found. Install CarLink for CarPlay maps.");
     }
@@ -99,7 +100,7 @@ public class HomeGridScreen extends Screen {
         return Theme.style == Theme.CODE ? buildCode() : buildTiles();
     }
 
-    // ---------- GLI / Carbon / Simple ----------
+    // ---------- Redline / Carbon / Simple ----------
 
     private View buildTiles() {
         Context c = host;
@@ -164,7 +165,7 @@ public class HomeGridScreen extends Screen {
         root.addView(strip, W.lp(W.MATCH, W.WRAP));
 
         View rule = new View(c);
-        if (Theme.style == Theme.GLI) {
+        if (Theme.style == Theme.REDLINE) {
             rule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                     new int[] { Theme.accent, Theme.alpha(Theme.accent, 0.35f), 0x00000000 }));
             root.addView(rule, W.margins(W.lp(W.MATCH, Theme.dp(3)), 0, 18, 0, 18));
@@ -221,7 +222,7 @@ public class HomeGridScreen extends Screen {
         List<App> list = apps();
         for (int i = 0; i < list.size(); i++) {
             final App a = list.get(i);
-            final TextView row = mono(c, String.format(Locale.US, "  %02d  %-12s ./%s", i + 1, a.label.toLowerCase(Locale.US),
+            final TextView row = mono(c, String.format(Locale.US, "  %02d  %-15s ./%s", i + 1, a.label.toLowerCase(Locale.US),
                     a.label.toLowerCase(Locale.US).replace(' ', '_')), 20, Theme.TEXT);
             row.setPadding(Theme.dp(4), Theme.dp(9), Theme.dp(4), Theme.dp(9));
             row.setOnTouchListener(new View.OnTouchListener() {
@@ -291,7 +292,7 @@ public class HomeGridScreen extends Screen {
         String batt = batteryText();
         if (Theme.style == Theme.CODE) {
             long up = (SystemClock.elapsedRealtime() - started) / 1000;
-            clock.setText(String.format(Locale.US, "drehzahl@%s  %s", Prefs.s(Prefs.INTRO_TEXT, "GLI").toLowerCase(Locale.US).replace(' ', '-'),
+            clock.setText(String.format(Locale.US, "drehzahl@%s  %s", Prefs.s(Prefs.INTRO_TEXT, Prefs.DEFAULT_INTRO_TEXT).toLowerCase(Locale.US).replace(' ', '-'),
                     new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(now)));
             appsHeader.setText("// " + Theme.STYLE_NAMES[Theme.style].toLowerCase(Locale.US) + " theme   up " + String.format(Locale.US, "%02d:%02d:%02d", up / 3600, (up / 60) % 60, up % 60));
             status.setText("bat " + batt + "   src " + VehicleHub.SOURCES[VehicleHub.get(host).source()].toLowerCase(Locale.US)
@@ -316,11 +317,11 @@ public class HomeGridScreen extends Screen {
         MediaHub m = MediaHub.get(host);
         if (Theme.style == Theme.CODE) {
             npTitle.setText(m.hasSession() ? "media " + (m.playing() ? "playing" : "paused") + ": " + m.title() + " / " + m.artist()
-                    : (m.permitted ? "media idle" : "media: no access (run toolkit install)"));
+                    : (m.permitted ? "media idle" : "media: no access (open media to allow it)"));
             return;
         }
         npTitle.setText(m.permitted ? m.title() : "Media info is off");
-        npArtist.setText(m.permitted ? (m.hasSession() ? m.artist() + "  ·  " + m.appName() : "Tap to pick a source") : "Run Install in the PC toolkit");
+        npArtist.setText(m.permitted ? (m.hasSession() ? m.artist() + "  ·  " + m.appName() : "Tap to pick a source") : "Tap to allow it");
         Bitmap b = m.art();
         if (b != null) { npArt.setImageBitmap(b); npArt.setPadding(0, 0, 0, 0); }
         else { npArt.setImageDrawable(new Icons(Icons.MEDIA, Theme.FAINT)); int p = Theme.dp(24); npArt.setPadding(p, p, p, p); }

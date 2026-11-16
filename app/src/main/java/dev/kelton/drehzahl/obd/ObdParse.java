@@ -51,8 +51,10 @@ public final class ObdParse {
             boolean hex = true;
             for (char c : l.toCharArray()) if (!isHex(c)) { hex = false; break; }
             if (!hex) continue;
+            // Only a match on a byte boundary counts: "x4 10 Cx" inside other data is not "41 0C".
             int at = l.indexOf(key);
-            if (at < 0 || at % 2 != 0) continue;
+            while (at >= 0 && at % 2 != 0) at = l.indexOf(key, at + 1);
+            if (at < 0) continue;
             return hexBytes(l.substring(at + key.length()));
         }
         return null;
@@ -74,7 +76,7 @@ public final class ObdParse {
 
     /** The request address that goes with a reply address on 11-bit CAN: 7E8 answers requests sent to 7E0. */
     public static String requestHeader(String replyHeader) {
-        int rx = Integer.parseInt(replyHeader, 16);
+        int rx = Math.max(8, Integer.parseInt(replyHeader, 16));
         return String.format(Locale.US, "%03X", rx - 8);
     }
 
@@ -84,15 +86,16 @@ public final class ObdParse {
         if (d == null || d.length < 4) return false;
         for (int i = 0; i < 32; i++) {
             boolean on = ((d[i / 8] >> (7 - (i % 8))) & 1) == 1;
-            if (on) supported[base + i + 1] = true;
+            if (on && base + i + 1 < supported.length) supported[base + i + 1] = true;
         }
-        return supported[base + 0x20];
+        return base + 0x20 < supported.length && supported[base + 0x20];
     }
 
     /** Reassembles CAN replies read with headers on (ATH1 ATS0): "7E8064302..." lines grouped per module. */
     public static Map<String, int[]> isoTp(String resp) {
         Map<String, List<Integer>> acc = new LinkedHashMap<>();
         Map<String, Integer> want = new LinkedHashMap<>();
+        if (resp == null) return new LinkedHashMap<>();
         for (String raw : resp.split("[\\r\\n]+")) {
             String l = raw.trim().replace(" ", "").toUpperCase(Locale.US);
             if (l.length() < 5 || !l.matches("^[0-9A-F]+$")) continue;
@@ -240,6 +243,23 @@ public final class ObdParse {
         return r.contains("UNABLE TO CONNECT") || r.contains("CAN ERROR") || r.contains("BUS ERROR")
                 || r.contains("BUS INIT") && r.contains("ERROR") || r.contains("NO DATA") && !r.contains("41");
     }
+
+    /** Joins an ELM reply into one hex string: drops the byte count line and the "0:" frame prefixes. */
+    public static String payload(String resp) {
+        if (resp == null) return "";
+        StringBuilder b = new StringBuilder();
+        String[] lines = resp.replace(" ", "").toUpperCase(Locale.US).split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            String l = lines[i].trim();
+            if (l.isEmpty()) continue;
+            if (i == 0 && lines.length > 1 && l.matches("^[0-9A-F]{3}$")) continue;
+            int colon = l.indexOf(':');
+            if (colon >= 0 && colon <= 2) l = l.substring(colon + 1);
+            b.append(l);
+        }
+        return b.toString();
+    }
+
 
     public static String protocolName(String dpn) {
         String n = dpn == null ? "" : dpn.trim().toUpperCase(Locale.US).replace("A", "");

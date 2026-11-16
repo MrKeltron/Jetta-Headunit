@@ -91,6 +91,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Prefs.init(this);
+        dev.kelton.drehzahl.core.EventLog.init(this);
         sensors = (SensorManager) getSystemService(SENSOR_SERVICE);
         light = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_LIGHT);
         Theme.init(this, startNight());
@@ -240,6 +241,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     public Screen rootScreen(int section) { return root(section); }
 
     public void go(int section) {
+        if (section < 0 || section >= roots.length) section = HOME;
         if (!Theme.grid() && section > SETTINGS) section = section == PERFORMANCE ? CAR : HOME;
         deactivate();
         stack.clear();
@@ -347,7 +349,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     public void playIntro() {
         final dev.kelton.drehzahl.ui.IntroView[] ref = new dev.kelton.drehzahl.ui.IntroView[1];
-        ref[0] = new dev.kelton.drehzahl.ui.IntroView(this, Theme.style, Prefs.s(Prefs.INTRO_TEXT, "GLI"), bootLines(), new Runnable() {
+        ref[0] = new dev.kelton.drehzahl.ui.IntroView(this, Theme.style, Prefs.s(Prefs.INTRO_TEXT, Prefs.DEFAULT_INTRO_TEXT), bootLines(), new Runnable() {
             @Override public void run() { if (ref[0].getParent() != null) ((ViewGroup) ref[0].getParent()).removeView(ref[0]); }
         });
         outer.addView(ref[0], new FrameLayout.LayoutParams(W.MATCH, W.MATCH));
@@ -446,6 +448,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (sticky != null) battery.onReceive(this, sticky);
         h.post(clockTick);
         if (light != null && Prefs.i(Prefs.THEME, 0) == 2) sensors.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
+        if (!MediaHub.get(this).permitted) MediaHub.get(this).start();
         if (!stack.isEmpty()) activate(stack.get(stack.size() - 1));
     }
 

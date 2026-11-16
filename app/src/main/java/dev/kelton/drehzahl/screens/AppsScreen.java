@@ -86,7 +86,7 @@ public class AppsScreen extends Screen {
             public boolean onItemLongClick(AdapterView<?> p, View v, int i, long id) {
                 Intent info = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + apps.get(i).cn.getPackageName()));
                 info.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                host.startActivity(info);
+                try { host.startActivity(info); } catch (RuntimeException e) { W.toast(host, "This tablet has no app info page"); }
                 return true;
             }
         });

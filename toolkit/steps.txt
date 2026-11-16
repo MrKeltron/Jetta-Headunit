@@ -1,28 +1,22 @@
-# Round: test Follow car power on the onn with a fake charger (plug, unplug, replug, quick crank blip)
+# Steps for "Run steps.bat": one command per line, run top to bottom against the tablet. Lines starting with # are skipped.
+# Results land in reports\steps (cleared at the start of every run).
+#
+#   DEVICE wifi|usb        which connection to use
+#   INSTALL                install the newest Drehzahl APK from the apk folder (or the GitHub release)
+#   HELPER                 start the Wi-Fi helper (needed again after every tablet restart)
+#   SHELL <command>        run a command on the tablet
+#   SAVE <name> <command>  run a command and save its output to reports\steps\<name>.txt
+#   SHOT <name>            save a screenshot to reports\steps\<name>.png
+#   PUSH / PULL            copy a file to or from the tablet
+#   OBDLOG, LOGCAT         save Drehzahl's OBD2 log or the tablet log
+#   WAIT <seconds>
+#
+# Do not put double quotes inside SHELL or SAVE commands: Windows removes them.
+#
+# Example: install the newest build, start the helper and save what the tablet is.
 DEVICE wifi
 INSTALL
-SHELL appops set dev.kelton.drehzahl TURN_SCREEN_ON allow
-SHELL dpm set-active-admin --user 0 dev.kelton.drehzahl/.core.ScreenAdmin
-SAVE pf-0-state dumpsys battery | head -12; cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1; settings get system screen_off_timeout; dumpsys activity services dev.kelton.drehzahl | grep -E 'ServiceRecord|isForeground' | head -4
-SHELL logcat -c
-SHELL am start -n dev.kelton.drehzahl/.MainActivity --ez power_follow true --ei open 0
-WAIT 3
-SHELL dumpsys battery set ac 1
-WAIT 3
-SAVE pf-1-plugged dumpsys power | grep -E 'mWakefulness='
-SHELL dumpsys battery set ac 0
-WAIT 14
-SAVE pf-2-unplugged dumpsys power | grep -E 'mWakefulness='
-SHELL dumpsys battery set ac 1
-WAIT 2
-SAVE pf-3-replugged dumpsys power | grep -E 'mWakefulness='
-SHOT pf-3-intro
-WAIT 7
-SHOT pf-4-home
-SHELL dumpsys battery set ac 0
-WAIT 3
-SHELL dumpsys battery set ac 1
-WAIT 13
-SAVE pf-5-crank dumpsys power | grep -E 'mWakefulness='
-SAVE pf-6-log logcat -d -s Drehzahl:I
-SHELL dumpsys battery reset
+HELPER
+SAVE tablet getprop ro.product.model; getprop ro.build.version.release
+SAVE drehzahl dumpsys package dev.kelton.drehzahl | grep -E versionName
+SHOT home

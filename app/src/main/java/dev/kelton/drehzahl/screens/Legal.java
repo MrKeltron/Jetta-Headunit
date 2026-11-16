@@ -41,11 +41,13 @@ final class Legal {
           "CarPlay runs in CarLink, a separate app with its own license (AGPL-3.0) and its own terms. Drehzahl only opens it. Music, "
           + "maps and other apps you launch from Drehzahl are covered by their own terms." },
         { "Your data",
-          "Drehzahl does not ask for internet access and sends nothing anywhere. Settings, trip memories and service data stay on the "
-          + "tablet. Media information is read from the tablet to show what is playing and is not stored." },
+          "Drehzahl sends nothing anywhere. It holds Android's network permission only to talk to its own helper on the tablet "
+          + "itself (address 127.0.0.1). Settings, trip memories and service data stay on the tablet. OBD2 logs, recorded pulls, "
+          + "drive logs and car scans are saved as files on the tablet and can include the car's VIN; check them before sharing. "
+          + "Media information is read from the tablet to show what is playing and is not stored." },
         { "Names and trademarks",
-          "Drehzahl is not made by, endorsed by or connected to Volkswagen AG, Apple Inc., Google LLC, Walmart Inc., Lenovo or any car "
-          + "or tablet maker. Volkswagen, Jetta, GLI, CarPlay, iPhone, Android, onn and Lenovo are trademarks of their owners and are used only "
+          "Drehzahl is not made by, endorsed by or connected to Apple Inc., Google LLC or any car "
+          + "or tablet maker. CarPlay, iPhone and Android are trademarks of their owners and are used only "
           + "to describe compatibility." },
         { "No warranty",
           "Drehzahl is provided as is, without warranty of any kind. The authors are not liable for any damage, loss, fines or injury "
@@ -57,7 +59,7 @@ final class Legal {
             p.addView(W.header(c, s[0]));
             p.addView(body(c, s[1]));
         }
-        p.addView(W.note(c, "Last updated November 5, 2026."));
+        p.addView(W.note(c, "Last updated November 16, 2026."));
     }
 
     private static final String[][] CREDITS = {
@@ -71,7 +73,7 @@ final class Legal {
           "CarLink by F-e-n-y-x, github.com/F-e-n-y-x/CarLink (AGPL-3.0)\n"
           + "Built on DiPlay by shihabal3amri (GPL-3.0), xcertplay (GPL-3.0) and DiAuto (AGPL-3.0)" },
         { "Fonts (SIL Open Font License 1.1)",
-          "Saira by Omnibus-Type, used by the GLI theme\n"
+          "Saira by Omnibus-Type, used by the Redline theme\n"
           + "Rajdhani by Indian Type Foundry, used by the Carbon theme\n"
           + "Inter by Rasmus Andersson and the Inter Project Authors, used by the Simple theme\n"
           + "JetBrains Mono by JetBrains, used by the Code theme\n"
@@ -79,7 +81,7 @@ final class Legal {
         { "Optional add-ons",
           "OnePro (Dark) icon pack by Eatos, sold separately on Google Play\n"
           + "Root features (Bluetooth receiver, Wi-Fi search pause, dock mode) work with the root tools Magisk, KernelSU and APatch (installed separately)\n"
-          + "mtkclient by Bjoern Kerler (GPL-3.0), used separately to back up and root the onn tablet (see docs/ROOTING.md)" },
+          + "mtkclient by Bjoern Kerler (GPL-3.0), used separately to back up and root MediaTek tablets (see docs/ROOTING.md)" },
         { "References",
           "Android audio effects documentation (DynamicsProcessing, Equalizer, BassBoost, Virtualizer, LoudnessEnhancer, PresetReverb)\n"
           + "Icon pack appfilter.xml format used by third-party Android launchers\n"

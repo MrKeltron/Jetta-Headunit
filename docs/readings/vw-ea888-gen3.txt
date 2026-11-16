@@ -1,0 +1,19 @@
+# VW/Audi 2.0 TSI, EA888 gen 3 (ECU data set EV_ECM20TFS02006K997071H), from a Car scan of a 2015 Jetta GLI.
+# Format: name header DID formula
+engine 1.984
+# Engine oil temperature from the ECU (22 202F, tenths of a kelvin). Runs hotter than the dash's oil reading on the road.
+oil 7E0 202F k10
+# Torque made and torque asked for, tenths of Nm (22 2061 and 22 20EB). The pull recorder reads both during pulls.
+torque 7E0 2061 u16/10
+torque_req 7E0 20EB u16/10
+# Candidates for the dash's oil temperature, only logged:
+t 7E0 11CD u8-40
+t 7E0 16B0 u8-40
+t 7E0 1432 u8-40
+t 7E0 14A6 u8-40
+t 7E0 143E u8-40
+k 7E0 1133 k10
+k 7E0 2065 k10
+# Pedal and throttle in tenths of a percent (likely), only logged:
+n 7E0 20BA u16
+n 7E0 20E6 u16

@@ -13,7 +13,7 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 
-/** Full-screen background for each theme: hex pattern (GLI), carbon weave (Carbon), grid (Code), flat otherwise. */
+/** Full-screen background for each theme: hex pattern (Redline), carbon weave (Carbon), grid (Code), flat otherwise. */
 public final class Backdrop extends Drawable {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path hex = new Path();
@@ -40,7 +40,7 @@ public final class Backdrop extends Drawable {
         c.drawColor(Theme.BG);
         p.setShader(null);
         switch (style) {
-            case Theme.GLI: honeycomb(c, w, h); break;
+            case Theme.REDLINE: honeycomb(c, w, h); break;
             case Theme.CARBON: carbon(c, w, h); break;
             case Theme.CODE: grid(c, w, h); break;
             default: break;

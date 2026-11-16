@@ -95,7 +95,7 @@ public final class DockMode {
     /**
      * MediaTek's own Type-C role: 1 takes power only, 5 (try to take power, else give it) is how the tablet ships.
      * Never read it: some files in that folder crash the kernel when read. 1 was tried on Nov 9: the tablet stopped
-     * feeding the Razer dock, but the dock then never supplied power either (it seems to need the tablet's power to
+     * feeding the dock it was tested with, but the dock then never supplied power either (it seems to need the tablet's power to
      * pick a role), leaving no charging and no CarPlay. So the module only puts the shipped value back.
      */
     static final String TCPC_ROLE = "/sys/class/tcpc/type_c_port0/typec_role";

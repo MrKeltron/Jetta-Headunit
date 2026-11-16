@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Runs the OBD2 parser and ELM327 tests on a PC with only a JDK (no Android needed).
+# Runs the OBD2 parser, ELM327, pull recorder and launcher picker tests on a PC with only a JDK (no Android needed).
 set -e
 cd "$(dirname "$0")"
 SRC=../../app/src/main/java/dev/kelton/drehzahl/obd
+CORE=../../app/src/main/java/dev/kelton/drehzahl/core
 rm -rf out && mkdir out
-javac -d out $SRC/Link.java $SRC/ObdParse.java $SRC/Elm327.java $SRC/PidScheduler.java $SRC/GattPick.java $SRC/ByteQueue.java $SRC/PullRecorder.java FakeElm.java ParseTest.java ElmTest.java SchedulerTest.java BleTest.java PullTest.java
+javac -d out $SRC/Link.java $SRC/ObdParse.java $SRC/Elm327.java $SRC/PidScheduler.java $SRC/GattPick.java $SRC/ByteQueue.java $SRC/PullRecorder.java $CORE/LauncherPick.java FakeElm.java ParseTest.java ElmTest.java SchedulerTest.java BleTest.java PullTest.java FuzzTest.java LauncherTest.java
 java -cp out ParseTest
 java -cp out ElmTest
 java -cp out dev.kelton.drehzahl.obd.SchedulerTest
 java -cp out dev.kelton.drehzahl.obd.BleTest
 java -cp out dev.kelton.drehzahl.obd.PullTest
+java -cp out dev.kelton.drehzahl.obd.FuzzTest
+java -cp out LauncherTest

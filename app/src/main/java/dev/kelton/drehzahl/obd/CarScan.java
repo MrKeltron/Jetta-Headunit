@@ -61,7 +61,7 @@ public final class CarScan implements ObdSource.ElmTask {
             standard(elm);
             Map<String, String> uds = modules(elm);
             if (uds.containsKey("7E0")) values(elm, "7E0", "7E8");
-            else line("## engine 7E0 did not answer UDS reads; its values need VW's TP2.0 transport (next step)");
+            else line("## engine 7E0 did not answer UDS reads; its values need a transport Drehzahl does not speak yet");
             line("# done");
             phase = "Done: " + found + " values found";
         } catch (IOException e) {
@@ -154,20 +154,8 @@ public final class CarScan implements ObdSource.ElmTask {
         elm.cmd("ATCRA" + rx, 1000);
     }
 
-    /** Joins an ELM reply into one hex string: drops the byte count line and the "0:" frame prefixes. */
-    static String payload(String resp) {
-        StringBuilder b = new StringBuilder();
-        String[] lines = resp.replace(" ", "").toUpperCase(Locale.US).split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            String l = lines[i].trim();
-            if (l.isEmpty()) continue;
-            if (i == 0 && lines.length > 1 && l.matches("^[0-9A-F]{3}$")) continue;
-            int colon = l.indexOf(':');
-            if (colon >= 0 && colon <= 2) l = l.substring(colon + 1);
-            b.append(l);
-        }
-        return b.toString();
-    }
+    /** Joins an ELM reply into one hex string (see ObdParse.payload). */
+    static String payload(String resp) { return ObdParse.payload(resp); }
 
     /** Printable text inside a reply (part numbers and names are ASCII), as a hint after the hex. */
     private static String text(String hex, int skip) {

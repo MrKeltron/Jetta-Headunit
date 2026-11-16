@@ -153,7 +153,11 @@ public class MediaScreen extends SplitScreen {
             public void run() {
                 MediaHub m = hub();
                 app.setText(Theme.label(m.hasSession() ? m.appName() : (m.permitted ? "Nothing playing" : "Media info is off")));
-                title.setText(m.permitted ? m.title() : "Run Install in the PC toolkit");
+                title.setText(m.permitted ? m.title() : "Tap here to allow it");
+                title.setOnClickListener(m.permitted ? null : new View.OnClickListener() {
+                    public void onClick(View v) { MediaHub.openAccessSettings(host); }
+                });
+                title.setClickable(!m.permitted);
                 artist.setText(m.artist());
                 album.setText(m.album());
                 Bitmap b = m.art();

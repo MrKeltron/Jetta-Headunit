@@ -377,6 +377,23 @@ public class VehicleScreen extends SplitScreen {
             if (i >= 3) W.setEnabledDeep(row, false);
         }
         if (cur == 2) obdSection(c, p);
+        if (cur == 2) {
+            final float eng = dev.kelton.drehzahl.obd.ObdSource.engineLiters();
+            p.addView(W.chevronRow(c, "Engine size", String.format(java.util.Locale.US, "%.1f L", eng)
+                    + (Prefs.has(Prefs.ENGINE_L) ? "" : " (not set yet)")
+                    + ". Used to work out airflow, fuel use and power on cars that report no airflow sensor reading.", new View.OnClickListener() {
+                public void onClick(View v) {
+                    W.askNumber(host, "Engine size", "litres", eng, new W.FloatCb() {
+                        public void on(float l) {
+                            if (l < 0.3f || l > 12f) { W.toast(host, "Enter litres, for example 2.0"); return; }
+                            Prefs.put(Prefs.ENGINE_L, l);
+                            dev.kelton.drehzahl.obd.ObdSource.get(host).engineChanged();
+                            refreshPage();
+                        }
+                    });
+                }
+            }));
+        }
         p.addView(W.toggleRow(c, "Real g-forces during demo", "Mix the tablet's accelerometer into the demo drive",
                 Prefs.b("demo_real_g", true), new Controls.BoolCb() { public void on(boolean v) { Prefs.put("demo_real_g", v); } }));
         p.addView(W.chevronRow(c, "Units", "mph or km/h, °F or °C, psi or bar", new View.OnClickListener() {
@@ -461,7 +478,7 @@ public class VehicleScreen extends SplitScreen {
         p.addView(W.note(c, "Records every full-throttle pull from the OBD2 adapter: boost, rpm, pedal, throttle, timing, fuel rail pressure "
                 + "and air-fuel ratio, from 5 s before the pedal goes down until you lift. While a pull runs Drehzahl asks for these "
                 + "readings as fast as the car answers. Afterwards it looks for the ECU closing the throttle with your foot down (a torque "
-                + "cut, felt as a buck), timing pulled for knock, fuel pressure sagging, running lean, and the DSG clutch slipping."));
+                + "cut, felt as a buck), timing pulled for knock, fuel pressure sagging, running lean, and the clutch slipping."));
         p.addView(W.toggleRow(c, "Record full-throttle pulls", "Starts at 80% pedal above 1200 rpm", Prefs.b(Prefs.PULLS, true), new Controls.BoolCb() {
             public void on(boolean x) {
                 Prefs.put(Prefs.PULLS, x);
@@ -486,7 +503,7 @@ public class VehicleScreen extends SplitScreen {
     // ---- Trouble codes ----
     private void codes(final Context c, final LinearLayout p) {
         p.addView(W.note(c, "Reads stored, pending and permanent codes from every module that answers generic OBD2. "
-                + "On your car that is the engine and the DSG. Needs Data source set to OBD2 adapter and the ignition on."));
+                + "On most cars that is the engine and the gearbox. Needs Data source set to OBD2 adapter and the ignition on."));
         LinearLayout btns = W.hbox(c);
         final LinearLayout res = W.vbox(c);
         btns.addView(W.button(c, "Read codes", true, new View.OnClickListener() {
@@ -538,6 +555,6 @@ public class VehicleScreen extends SplitScreen {
             }
         }
         res.addView(W.note(c, total == 0 ? "No trouble codes." : total + " code" + (total == 1 ? "" : "s")
-                + ". Look them up for your engine (EA888) or DSG (DQ250), or check them with VCDS for manufacturer detail."));
+                + ". Look them up for your make and engine, or read them with the maker's own diagnostic tool for more detail."));
     }
 }

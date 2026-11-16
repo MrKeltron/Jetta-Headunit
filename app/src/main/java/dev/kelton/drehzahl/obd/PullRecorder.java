@@ -264,7 +264,7 @@ public final class PullRecorder {
                     if (v(j) - r0 < 600 || Float.isNaN(s1) || s1 - s0 > 2) continue;
                     for (int k = j + 1; k < size() && t(k) - t(j) <= 1500; k++) {
                         if (pid(k) == RPM && v(j) - v(k) >= 400 && at(SPEED, t(k)) >= s1) {
-                            findings.add(String.format(Locale.US, "RPM flared %,.0f rpm at %.1f s without the car speeding up, then dropped back. Points to the DSG clutch slipping.",
+                            findings.add(String.format(Locale.US, "RPM flared %,.0f rpm at %.1f s without the car speeding up, then dropped back. Points to the clutch slipping.",
                                     v(j) - r0, (t - start) / 1000f));
                             return;
                         }

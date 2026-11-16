@@ -24,7 +24,7 @@ public class CarPlayScreen extends Screen {
     @Override public int section() { return MainActivity.CARPLAY; }
 
     public void startCarPlay() {
-        if (!CarLink.launch(host)) W.toast(host, "CarLink is not installed. Use Install in the PC toolkit.");
+        if (!CarLink.launch(host)) W.toast(host, "CarLink is not installed. Get it from github.com/F-e-n-y-x/CarLink or run Install in the PC toolkit.");
     }
 
     @Override protected View build() {
@@ -67,7 +67,7 @@ public class CarPlayScreen extends Screen {
 
     @Override public void onShow() {
         String v = CarLink.version(host);
-        status.setText(v == null ? "CarLink is not installed yet.\nOn your PC: JettaHeadUnit > START HERE > 4 Install."
+        status.setText(v == null ? "CarLink is not installed yet.\nGet the APK from github.com/F-e-n-y-x/CarLink, or run Install in the PC toolkit."
                 : "CarLink " + v + " installed. Plug in your iPhone or pair it once over Bluetooth for wireless.");
     }
 }

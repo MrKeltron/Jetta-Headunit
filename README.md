@@ -1,10 +1,10 @@
 # Drehzahl
 
-Head unit app for an Android tablet mounted in a car. Built for a 2015 Jetta GLI with an onn 10.1 tablet (Android 15),
-but nothing in it is tied to one car or one tablet.
+Head unit app for an Android tablet mounted in a car. It runs on any tablet with Android 9 or newer and reads any car
+with an OBD2 port; nothing in it is tied to one car or one tablet. Free and open source (MIT).
 
 Drehzahl replaces the tablet's home screen with a head unit layout: a home screen of buttons (Media, CarPlay, Navigation,
-Performance, Car, Sound, Widgets, Apps, Settings, Android settings), each opening its own app with tab buttons. It has an
+Performance, Car, Sound, Widgets, Apps, Settings, Stock launcher), each opening its own app with tab buttons. It has an
 equalizer that works on other apps' audio, live gauges, a g-meter that uses the tablet's own accelerometer, a lap timer,
 trip memories, service reminders and a startup animation.
 
@@ -14,7 +14,7 @@ Pick one in Settings > Display. Each has its own colors, font, buttons, backgrou
 
 | Theme | Look | Font |
 |---|---|---|
-| GLI | Red on black, hex pattern, square buttons. Startup: hex wave, tach sweep to redline, red stripe | Saira |
+| Redline | Red on black, hex pattern, square buttons. Startup: hex wave, tach sweep to redline, red stripe | Saira |
 | Carbon | Carbon weave, round metal buttons, amber accents | Rajdhani |
 | Simple | Black and white, big text, fewer details | Inter |
 | Code | Terminal home with live telemetry, event log and a boost graph | JetBrains Mono |
@@ -32,7 +32,7 @@ fonts or logos are used.
 
 | Area | Details |
 |---|---|
-| Home | Clock, battery, now playing, three live readouts and ten app buttons |
+| Home | Clock, battery, now playing, three live readouts and ten app buttons (the last one opens the tablet's stock launcher) |
 | Media | Now playing with seek and 10 s / 30 s skips, up next queue, sources, output (system output switcher, volume, quick EQ, balance), phone over Bluetooth |
 | Phone over Bluetooth | Lets any phone play music to the tablet like a car stereo (A2DP sink with track info and controls over AVRCP). Android ships tablets with this switched off; on a rooted tablet Drehzahl adds a small module that switches it on (system properties on Android 13 and newer, a resource overlay on Android 10 to 12). Without root the page explains why it cannot work |
 | Widgets | Clock, now playing, engine gauges, g-meter, trip, tablet and CarPlay status on one screen |
@@ -40,10 +40,13 @@ fonts or logos are used.
 | Sound | 10-band EQ with presets, treble/mid/bass, balance and fader pad, sound focus, bass boost, surround, loudness, 3-band compressor, limiter, reverb, max switch-on volume, speed-dependent volume |
 | Car | 6 configurable gauges (15 readings), g-meter with peaks and mount calibration, lap timer, three trip memories, oil service reminder, driving profiles, data source picker |
 | OBD2 | ELM327 adapters by USB cable (own FTDI, CH340, CP210x and CDC-ACM drivers), classic Bluetooth, or Bluetooth LE (no pairing; finds the adapter's data channel by itself). Finds which readings the car answers, asks the engine computer directly on CAN cars, polls continuously, rests and retries a reading the car stops answering (its gauge shows -- meanwhile), reads and clears trouble codes per module, adapter console, log file |
-| Pull recorder | Car > Pull recorder. Records every full-throttle pull from the OBD2 adapter (boost, rpm, pedal, throttle asked and actual, timing, fuel rail pressure, commanded and measured lambda), from 5 s before the pedal goes down until the lift, asking up to 6 readings per request when the car allows it. Flags torque cuts (the ECU closing the throttle with the pedal down, felt as a buck) and says what led up to them, timing pulled below zero, rail pressure sag, running lean, and RPM flares without speed (DSG clutch slip). Chart with touch readout; each pull is also saved as a CSV |
+| Pull recorder | Car > Pull recorder. Records every full-throttle pull from the OBD2 adapter (boost, rpm, pedal, throttle asked and actual, timing, fuel rail pressure, commanded and measured lambda), from 5 s before the pedal goes down until the lift, asking up to 6 readings per request when the car allows it. Flags torque cuts (the ECU closing the throttle with the pedal down, felt as a buck) and says what led up to them, timing pulled below zero, rail pressure sag, running lean, and RPM flares without speed (clutch slip). On cars with a manufacturer reading list it also records torque asked for and torque made, flags torque drops with the throttle still open, and reads the engine fault memory right after each pull. Chart with touch readout; each pull is also saved as a CSV |
 | Adapter console | Commands joined with ; run as one block with the gauges paused, so header and filter settings hold for the whole block; the adapter is put back to normal afterwards |
 | Follow car power | Optional: screen off a set time after the car's power goes away (the wait covers engine cranking), music paused; when power returns the screen wakes, the startup animation plays and the home screen opens. Uses a device admin with only the lock-screen policy. With a PIN or pattern set, the tablet wakes to its lock screen |
-| Wi-Fi guard (root) | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. A saved flag undoes a pause that was cut short, and Android resets auto-join at restart. Settings > CarPlay |
+| Manufacturer readings | Values a car only gives by the maker's own ID numbers (UDS service 22), such as oil temperature and engine torque. Listed in a text file on the tablet; ready-made lists and how to find your own are in [docs/readings](docs/readings). Empty until you add your car's |
+| Car scan | OBD console > Car scan: a read-only walk through what the car's computers answer (modules, part numbers, fault memory, every value ID in a range), saved to a file. Never sends anything that changes the car |
+| Stock launcher | A Home button that opens the launcher the tablet came with, or any other installed launcher picked in Settings > Home and apps |
+| Wi-Fi guard | Wireless CarPlay shares the tablet's single Wi-Fi radio. Away from a known network Android searches for one about every 20 s, and each search takes the radio off the CarPlay channel long enough for the music to stutter. When a phone joins CarLink's Wi-Fi Direct link, Drehzahl switches Wi-Fi auto-join off (which stops the searches) and switches it back on when the phone leaves. A saved flag undoes a pause that was cut short, and Android resets auto-join at restart. Works with root, or without root through a small helper that runs as Android's shell user: the PC toolkit starts it once, and after that Drehzahl restarts it by itself. While wireless CarPlay runs, the event log gets a line every 30 s with the audio dropped and the Wi-Fi scans seen. Settings > CarPlay |
 | Dock mode (root) | Charge from a powered USB-C dock and run wired CarPlay through it at the same time. Docks without USB-PD give the tablet plain 5 V, and Android then can't be charging and USB host together: the tablet either charges and can't see the phone, or sees the phone and powers the dock and phone from its own battery (about 2 A, even with the car off). A small root module asks the USB-C port to take power only and, every time power arrives, restarts the USB controller in host mode, so the dock's hub and the phone show up while the tablet charges and CarPlay starts by itself. If nothing answers on USB (a charger or a computer) USB is left as normal. Not solved yet: when the dock loses power the tablet still switches to powering it. Settings > Connections |
 | Settings backup | Settings > Reset: save every Drehzahl setting to a file and load it again, for example before resetting or rooting the tablet |
 | Screens | Drawn for 1280 x 800 dp. Smaller tablets (for example 800 x 1280 at 240 dpi) shrink the whole layout to fit instead of cutting it off |
@@ -52,7 +55,7 @@ fonts or logos are used.
 
 ## Not built yet
 
-- Manufacturer-specific readings (oil temperature on cars that do not report it over generic OBD2, actual vs requested boost).
+- Granting the ADB-only permissions on the tablet itself (for example through Shizuku), so no PC is needed at all.
 - Tuner link data source.
 - Fader and front focus output. They need a 4-channel USB audio interface; the settings are saved already.
 
@@ -68,9 +71,13 @@ Then disconnect and reconnect CarPlay. The PC toolkit can do this for you (see `
 
 That made home tests better but drives still stuttered. The second cause: away from a known Wi-Fi network, Android searches
 for one about every 20 s, and a single Wi-Fi radio has to leave the CarPlay channel for every search. Opening the tablet's
-Wi-Fi settings (which searches on purpose) makes CarPlay stutter on cue. On a rooted tablet Drehzahl's Wi-Fi guard pauses
-those searches while a phone is on the link (Settings > CarPlay). Android gives ordinary apps no way to stop them, so
-without root this part cannot be fixed by an app.
+Wi-Fi settings (which searches on purpose) makes CarPlay stutter on cue. Drehzahl's Wi-Fi guard pauses those searches while
+a phone is on the link (Settings > CarPlay). Android gives ordinary apps no way to stop them, so it needs root or the
+helper the PC toolkit starts.
+
+Two more causes found on the road: Google's Location Accuracy setting scans for Wi-Fi every few seconds while the tablet
+moves (switch it off in the tablet's Location settings), and a phone that is also the tablet's Wi-Fi hotspot has to share
+its one radio between the hotspot and CarPlay (forget the hotspot on the tablet).
 
 If the tablet also joins a Wi-Fi network in the car (a phone hotspot, for example), keep that network on the same channel
 as CarPlay; a single Wi-Fi radio has to switch channels for every packet otherwise.
@@ -131,15 +138,48 @@ tools/make_icon.py       draws the launcher icon (Python standard library only)
 build.sh                 builds the APK without Gradle
 ```
 
-## Installing on the tablet
+## Installing
+
+What you need: an Android tablet (Android 9 or newer; built and tested on Android 15), and for the full setup a Windows PC
+on the same Wi-Fi, one time. For gauges, an ELM327-type OBD2 adapter (USB, Bluetooth or Bluetooth LE). For CarPlay, the
+separate [CarLink](https://github.com/F-e-n-y-x/CarLink) app. Nothing else has to be installed.
+
+### Quick way: just the app
+
+1. On the tablet, download `Drehzahl-x.y.z.apk` from the newest [release](../../releases) and open it. Android asks once to
+   allow installing from your browser or file manager.
+2. Open Drehzahl. To make it the home screen: Settings > Home and apps > Default home app.
+3. Allow what it asks for (Bluetooth, notifications, nearby devices).
+
+This gives you the themes, home screen, app drawer, gauges from an OBD2 adapter, g-meter, lap timer, trips, the pull
+recorder and CarPlay through CarLink. A few things need permissions that Android only hands out over ADB:
+
+| Needs the full setup | Why |
+|---|---|
+| Now playing from other apps (title, art, controls) | Notification access can also be switched on by hand: Android settings > Notifications > Notification access (called "Device and app notifications" on some tablets) > Drehzahl media info |
+| Equalizer on every music app | Permission to see other apps' audio sessions (DUMP) |
+| Keep screen on while charging, brightness for all apps | WRITE_SECURE_SETTINGS |
+| Wi-Fi guard without root | The helper has to be started from ADB once |
+
+### Full setup with the PC toolkit
 
 1. On the tablet: Settings > About tablet, tap Build number 7 times. Then Settings > System > Developer options >
    Wireless debugging on.
-2. Copy the `toolkit` folder to a Windows PC on the same Wi-Fi. Put `START HERE.bat` next to it.
+2. Download the source code zip of the release on a Windows PC on the same Wi-Fi and unzip it.
 3. Run `START HERE.bat`: 1 Connect, 2 Report, 3 Debloat (optional), 4 Install.
 
-Option 4 installs Drehzahl and CarLink, grants the permissions only ADB can grant (media info, audio session
-detection, system brightness, keep screen on while charging) and can make Drehzahl the home app.
+Option 4 downloads and installs the newest Drehzahl release and CarLink, grants the permissions only ADB can grant (media
+info, audio session detection, system brightness, keep screen on while charging) and can make Drehzahl the home app.
+Debloat shows its whole list first and only removes packages that exist on your tablet; option 5 puts them back.
+
+### First drive
+
+1. Car > Data source: pick "OBD2 adapter", then USB or Bluetooth and your adapter. Set Engine size.
+2. Settings > Units for mph or km/h, and Settings > Display for the theme and the startup text.
+3. Optional: add your car's manufacturer readings ([docs/readings](docs/readings)).
+
+Rooting is not needed. Root only adds the Bluetooth music receiver and dock mode; [docs/ROOTING.md](docs/ROOTING.md) is a
+worked example for one MediaTek tablet, not a general guide.
 
 ## Building
 
@@ -164,5 +204,5 @@ The font files in `app/src/main/assets/fonts` are Latin subsets from the Fontsou
 ## License
 
 MIT, see [LICENSE](LICENSE). CarLink, DiPlay and the icon pack are separate projects with their own licenses.
-Volkswagen, Jetta, GLI, CarPlay, iPhone, Android and onn are trademarks of their owners and are named only to describe
-compatibility.
+CarPlay, iPhone and Android are trademarks of their owners and are named only to describe compatibility. Car and
+tablet models are named in the notes only to say what something was tested on.

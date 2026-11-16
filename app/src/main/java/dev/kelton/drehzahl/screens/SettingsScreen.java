@@ -118,10 +118,10 @@ public class SettingsScreen extends SplitScreen {
         }
         p.addView(W.toggleRow(c, "Startup animation", "Plays when Drehzahl starts and after picking a theme. Tap to skip it.",
                 Prefs.b(Prefs.INTRO, true), new Controls.BoolCb() { public void on(boolean v) { Prefs.put(Prefs.INTRO, v); } }));
-        p.addView(W.chevronRow(c, "Startup text", Prefs.s(Prefs.INTRO_TEXT, "GLI"), new View.OnClickListener() {
+        p.addView(W.chevronRow(c, "Startup text", Prefs.s(Prefs.INTRO_TEXT, Prefs.DEFAULT_INTRO_TEXT), new View.OnClickListener() {
             public void onClick(View v) {
-                W.askText(host, "Startup text", Prefs.s(Prefs.INTRO_TEXT, "GLI"), new W.TextCb() {
-                    public void on(String t) { Prefs.put(Prefs.INTRO_TEXT, t.trim().isEmpty() ? "GLI" : t.trim()); refreshPage(); }
+                W.askText(host, "Startup text", Prefs.s(Prefs.INTRO_TEXT, Prefs.DEFAULT_INTRO_TEXT), new W.TextCb() {
+                    public void on(String t) { Prefs.put(Prefs.INTRO_TEXT, t.trim().isEmpty() ? Prefs.DEFAULT_INTRO_TEXT : t.trim()); refreshPage(); }
                 });
             }
         }));
@@ -291,6 +291,25 @@ public class SettingsScreen extends SplitScreen {
         if (packs.isEmpty()) {
             p.addView(W.note(c, "No icon packs installed. OnePro (Dark) is on the Play Store; the PC toolkit's Install step opens its page."));
         }
+        final List<dev.kelton.drehzahl.core.LauncherPick.Home> homes = dev.kelton.drehzahl.sys.Launchers.choices(c);
+        dev.kelton.drehzahl.core.LauncherPick.Home now = dev.kelton.drehzahl.sys.Launchers.current(c);
+        boolean auto = Prefs.s(Prefs.STOCK_LAUNCHER, "").isEmpty() || now == null || !now.id().equals(Prefs.s(Prefs.STOCK_LAUNCHER, ""));
+        String stockSub = now == null ? "No other launcher is installed or enabled on this tablet"
+                : (auto ? "Automatic: " : "") + now.label + ". The Stock launcher button on Home opens it.";
+        p.addView(W.chevronRow(c, "Stock launcher button", stockSub, new View.OnClickListener() {
+            public void onClick(View v) {
+                if (homes.isEmpty()) { W.toast(host, "No other launcher is installed or enabled on this tablet"); return; }
+                String[] names = new String[homes.size() + 1];
+                names[0] = "Automatic (the launcher this tablet came with)";
+                for (int k = 0; k < homes.size(); k++) names[k + 1] = homes.get(k).label;
+                W.pick(host, "Stock launcher button", names, new Controls.IntCb() {
+                    public void on(int i) {
+                        Prefs.put(Prefs.STOCK_LAUNCHER, i <= 0 || i > homes.size() ? "" : homes.get(i - 1).id());
+                        refreshPage();
+                    }
+                });
+            }
+        }));
         p.addView(W.chevronRow(c, "Default home app", "Pick Drehzahl so the Home button always comes back here", new View.OnClickListener() {
             public void onClick(View v) { open(new Intent(Settings.ACTION_HOME_SETTINGS)); }
         }));
